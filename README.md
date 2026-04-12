@@ -36,6 +36,9 @@ Output is placed in `dist/`.
 
 This project was built upon the foundations of [CVRMelonAssistant](https://github.com/Nirv-git/CVRMelonAssistant). This rewrite would not have been possible without the excellent work done by [Nirv-git](https://github.com/Nirv-git) and the original contributors.
 
+> [!IMPORTANT]
+> **Disclaimer**: Modding ChilloutVR is [officially allowed](https://docs.chilloutvr.net/official/legal/tos/#7-modding-our-games) per the ChilloutVR Terms of Service. However, **CVR Mod Assistant is NOT affiliated with and/or endorsed by the ChilloutVR Team.** Use this tool at your own risk.
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
