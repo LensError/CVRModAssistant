@@ -7,7 +7,6 @@ A modern, fast, and beautiful mod manager for [ChilloutVR](https://store.steampo
 ## Features
 
 - **Clean and Intuitive Interface**: Designed for ease of use with a focus on readability and smooth navigation.
-- **Smart Detection**: Automatic MelonLoader and game directory detection via Steam/Oculus registries.
 - **Mod Management**: Browse, install, update, and remove mods from the CVRmg community with ease.
 - **Sync Support**: One-click synchronization to keep your local mods up to date.
 
