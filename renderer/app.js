@@ -88,12 +88,10 @@ window.App = (() => {
             btn.classList.toggle('active', btn.dataset.page === page);
         });
 
-        // Show/hide topbar search + install (only on Mods page)
-        const topbarLeft = document.getElementById('topbar-left');
-        const topbarRight = document.getElementById('topbar-right');
-        if (topbarLeft && topbarRight) {
-            topbarLeft.style.visibility  = page === 'mods' ? 'visible' : 'hidden';
-            topbarRight.style.visibility = page === 'mods' ? 'visible' : 'hidden';
+        // Show/hide topbar (only on Mods page)
+        const topbar = document.getElementById('topbar');
+        if (topbar) {
+            topbar.style.display = page === 'mods' ? '' : 'none';
         }
 
         // Hide preset bar when not on mods
