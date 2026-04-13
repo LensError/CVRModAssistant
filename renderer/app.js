@@ -149,9 +149,46 @@ window.App = (() => {
         start();
     });
 
+    // ── Styled confirm dialog ─────────────────────────────────────────────────
+    // Returns a Promise<boolean>. Use instead of the native confirm() everywhere.
+    function showConfirm({ title, body, confirmLabel = 'Confirm', danger = false }) {
+        return new Promise(resolve => {
+            const overlay = document.createElement('div');
+            overlay.className = 'confirm-overlay';
+            overlay.innerHTML = `
+                <div class="confirm-dialog">
+                    <div class="confirm-title">${escHtml(title)}</div>
+                    ${body ? `<div class="confirm-body">${escHtml(body)}</div>` : ''}
+                    <div class="confirm-actions">
+                        <button class="btn-ghost" id="cd-cancel">Cancel</button>
+                        <button class="${danger ? 'btn-danger' : 'btn-primary'}" id="cd-ok">${escHtml(confirmLabel)}</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            requestAnimationFrame(() => overlay.querySelector('#cd-ok').focus());
+
+            const done = v => { document.body.removeChild(overlay); resolve(v); };
+            overlay.querySelector('#cd-ok').onclick     = () => done(true);
+            overlay.querySelector('#cd-cancel').onclick = () => done(false);
+            overlay.addEventListener('keydown', e => {
+                if (e.key === 'Escape') done(false);
+                if (e.key === 'Enter')  done(true);
+            });
+            overlay.onclick = e => { if (e.target === overlay) done(false); };
+        });
+    }
+
+    function escHtml(s) {
+        if (!s) return '';
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
     return {
         enterApp,
         navigateTo,
         setInstallDir,
+        confirm: showConfirm,
     };
 })();

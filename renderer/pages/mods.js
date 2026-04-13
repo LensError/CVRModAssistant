@@ -240,7 +240,7 @@ window.ModsPage = (() => {
 
         document.getElementById('pb-delete')?.addEventListener('click', async () => {
             if (Object.keys(state.presets).length <= 1) return;
-            if (!confirm(`Delete preset "${state.activePresetName}"?`)) return;
+            if (!await window.App.confirm({ title: `Delete preset "${state.activePresetName}"?`, body: 'This preset will be permanently removed.', confirmLabel: 'Delete', danger: true })) return;
             delete state.presets[state.activePresetName];
             state.activePresetName = Object.keys(state.presets)[0];
             applyPreset(state.activePresetName);
@@ -596,10 +596,13 @@ window.ModsPage = (() => {
             !toUninstall.includes(m)
         );
         if (installedBrokenRetired.length) {
-            const names = installedBrokenRetired.map(m => `• ${m.name} (${m.isBroken ? 'Broken' : 'Retired'})`).join('\n');
-            const remove = confirm(
-                `The following installed mods are marked Broken or Retired:\n\n${names}\n\nRemove them?`
-            );
+            const names = installedBrokenRetired.map(m => `${m.name} (${m.isBroken ? 'Broken' : 'Retired'})`).join(', ');
+            const remove = await window.App.confirm({
+                title: 'Remove Broken / Retired Mods?',
+                body: `The following installed mods are marked Broken or Retired and will be removed:\n${names}`,
+                confirmLabel: 'Remove',
+                danger: true,
+            });
             if (remove) toUninstall.push(...installedBrokenRetired);
         }
 
@@ -902,5 +905,21 @@ window.ModsPage = (() => {
     }
     function debounce(fn, d) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), d); }; }
 
-    return { init };
+    // Called by the options page after a wipe so the install button reflects reality
+    // immediately, without requiring the user to navigate away and back.
+    async function notifyModsWiped(installDir) {
+        if (!state.allMods.length) return; // mods page was never loaded — init will handle it
+        state.installDir = installDir;
+        try {
+            state.installedFiles = await window.cvrma.scanInstalledMods(installDir);
+        } catch { state.installedFiles = []; }
+        state.modList = buildModList(state.allMods);
+        // Preserve selections from the active preset — do NOT wipe checkboxes
+        applyPreset(state.activePresetName);
+        checkDirty();
+        refreshCardList();
+        updateSyncBtn();
+    }
+
+    return { init, notifyModsWiped };
 })();

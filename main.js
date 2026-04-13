@@ -1,4 +1,6 @@
+require('v8-compile-cache');
 const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
@@ -266,7 +268,12 @@ function uninstallMod(filePath) {
 }
 
 function removeAllMods(installDir) {
-    const dirs = ['Mods', 'Plugins'];
+    // Mirror the subdirectories scanned by scanInstalledMods so nothing is left behind
+    const dirs = [
+        'Mods', 'Plugins',
+        'Mods/Broken', 'Plugins/Broken',
+        'Mods/Retired', 'Plugins/Retired',
+    ];
     const removed = [];
     for (const d of dirs) {
         const full = path.join(installDir, d);
@@ -281,6 +288,12 @@ function removeAllMods(installDir) {
         }
     }
     return removed.length;
+}
+
+function removeAllModsAndMelon(installDir) {
+    const count = removeAllMods(installDir);
+    removeMelonLoader(installDir);
+    return count;
 }
 
 // ─── Window ───────────────────────────────────────────────────────────────────
@@ -303,6 +316,32 @@ function createWindow() {
     });
 
     mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+
+    // --- Auto Updater ---
+    autoUpdater.autoDownload = false;
+    autoUpdater.logger = console;
+
+    autoUpdater.on('checking-for-update', () => {
+        mainWindow?.webContents.send('update-message', 'Checking for updates...');
+    });
+    autoUpdater.on('update-available', (info) => {
+        mainWindow?.webContents.send('update-available', info);
+    });
+    autoUpdater.on('update-not-available', () => {
+        mainWindow?.webContents.send('update-not-available');
+    });
+    autoUpdater.on('error', (err) => {
+        mainWindow?.webContents.send('update-error', err.message);
+    });
+    autoUpdater.on('download-progress', (progressObj) => {
+        mainWindow?.webContents.send('update-download-progress', progressObj.percent);
+    });
+    autoUpdater.on('update-downloaded', () => {
+        mainWindow?.webContents.send('update-downloaded');
+    });
+
+    // Check for updates on startup
+    autoUpdater.checkForUpdatesAndNotify();
 }
 
 app.whenReady().then(createWindow);
@@ -401,6 +440,15 @@ ipcMain.handle('remove-all-mods', (_e, installDir) => {
     }
 });
 
+ipcMain.handle('remove-all-mods-and-melon', (_e, installDir) => {
+    try {
+        const count = removeAllModsAndMelon(installDir);
+        return { success: true, count };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+
 ipcMain.handle('get-app-version', () => app.getVersion());
 
 ipcMain.handle('export-presets', async () => {
@@ -453,3 +501,8 @@ ipcMain.on('window-maximize', () => {
     else mainWindow?.maximize();
 });
 ipcMain.on('window-close', () => mainWindow?.close());
+
+// Update Handlers
+ipcMain.handle('check-for-updates', () => autoUpdater.checkForUpdatesAndNotify());
+ipcMain.handle('download-update', () => autoUpdater.downloadUpdate());
+ipcMain.handle('quit-and-install', () => autoUpdater.quitAndInstall());

@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('cvrma', {
     installMod: (installDir, mod) => ipcRenderer.invoke('install-mod', installDir, mod),
     uninstallMod: (filePath) => ipcRenderer.invoke('uninstall-mod', filePath),
     removeAllMods: (installDir) => ipcRenderer.invoke('remove-all-mods', installDir),
+    removeAllModsAndMelon: (installDir) => ipcRenderer.invoke('remove-all-mods-and-melon', installDir),
 
     // Presets
     exportPresets: () => ipcRenderer.invoke('export-presets'),
@@ -40,4 +41,14 @@ contextBridge.exposeInMainWorld('cvrma', {
     // Status push from main → renderer
     onStatusUpdate: (cb) => ipcRenderer.on('status-update', (_e, data) => cb(data)),
     offStatusUpdate: () => ipcRenderer.removeAllListeners('status-update'),
+
+    // Updates
+    checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+    downloadUpdate: () => ipcRenderer.invoke('download-update'),
+    quitAndInstall: () => ipcRenderer.invoke('quit-and-install'),
+    onUpdateAvailable: (cb) => ipcRenderer.on('update-available', (_e, info) => cb(info)),
+    onUpdateNotAvailable: (cb) => ipcRenderer.on('update-not-available', () => cb()),
+    onUpdateError: (cb) => ipcRenderer.on('update-error', (_e, msg) => cb(msg)),
+    onUpdateDownloadProgress: (cb) => ipcRenderer.on('update-download-progress', (_e, p) => cb(p)),
+    onUpdateDownloaded: (cb) => ipcRenderer.on('update-downloaded', () => cb()),
 });

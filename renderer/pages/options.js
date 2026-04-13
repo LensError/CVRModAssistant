@@ -132,6 +132,36 @@ window.OptionsPage = (() => {
                         </div>
                     </div>
 
+                    <!-- Application Updates Card -->
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                                </svg>
+                            </div>
+                            <div class="card-title-group">
+                                <span class="card-label">Software Version</span>
+                                <span class="card-title">Application Updates</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="update-status-box">
+                                <span id="opt-version-text" class="version-tag">v0.0.0</span>
+                                <span id="update-info-text" class="update-info">Checking for updates...</span>
+                                <div class="update-progress-container" id="update-progress-wrap" style="display:none">
+                                    <div class="update-progress-bar" id="update-progress-bar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <span class="settings-desc">Keep CVR Mod Assistant up to date with the latest features and bug fixes.</span>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn-ghost" id="opt-check-update">Check Now</button>
+                            <button class="btn-primary" id="opt-download-update" style="display:none">Download Update</button>
+                            <button class="btn-primary" id="opt-install-update" style="display:none">Restart &amp; Install</button>
+                        </div>
+                    </div>
+
                     <!-- Maintenance Card (Danger) -->
                     <div class="settings-card danger">
                         <div class="card-header">
@@ -150,7 +180,8 @@ window.OptionsPage = (() => {
                             <span class="settings-desc">Destructive operations for troubleshooting. Use with caution.</span>
                         </div>
                         <div class="card-footer">
-                            <button class="btn-danger" id="opt-remove-all-mods" ${!installDir ? 'disabled' : ''}>Wipe Mods</button>
+                            <button class="btn-danger" id="opt-remove-all-mods" ${!installDir ? 'disabled' : ''}>Remove Mods</button>
+                            <button class="btn-danger" id="opt-remove-all-mods-and-melon" ${!installDir ? 'disabled' : ''}>Remove Mods &amp; MelonLoader</button>
                         </div>
                     </div>
 
@@ -214,7 +245,7 @@ window.OptionsPage = (() => {
         const removeMlBtn = document.getElementById('opt-remove-ml');
         if (removeMlBtn) {
             removeMlBtn.addEventListener('click', async () => {
-                if (!confirm('Remove MelonLoader? This will delete version.dll and the MelonLoader folder.')) return;
+                if (!await window.App.confirm({ title: 'Uninstall MelonLoader', body: 'This will delete version.dll, dobby.dll and the MelonLoader folder. This cannot be undone.', confirmLabel: 'Uninstall', danger: true })) return;
                 removeMlBtn.disabled = true;
                 const result = await window.cvrma.removeMelonLoader(installDir);
                 if (result.success) {
@@ -279,17 +310,96 @@ window.OptionsPage = (() => {
         const removeAllBtn = document.getElementById('opt-remove-all-mods');
         if (removeAllBtn) {
             removeAllBtn.addEventListener('click', async () => {
-                if (!confirm('Remove ALL mods? This cannot be undone.')) return;
+                if (!await window.App.confirm({ title: 'Remove All Mods', body: 'All DLL files in the Mods and Plugins folders will be deleted. This cannot be undone.', confirmLabel: 'Remove Mods', danger: true })) return;
                 removeAllBtn.disabled = true;
                 const result = await window.cvrma.removeAllMods(installDir);
                 if (result.success) {
                     setStatus(`Removed ${result.count} mod file(s).`, 'ok');
+                    window.ModsPage.notifyModsWiped(installDir);
                 } else {
                     setStatus(`Failed: ${result.error}`, 'err');
                 }
                 removeAllBtn.disabled = false;
             });
         }
+
+        const removeAllAndMelonBtn = document.getElementById('opt-remove-all-mods-and-melon');
+        if (removeAllAndMelonBtn) {
+            removeAllAndMelonBtn.addEventListener('click', async () => {
+                if (!await window.App.confirm({ title: 'Remove Mods & MelonLoader', body: 'All mods will be deleted and MelonLoader will be uninstalled. This cannot be undone.', confirmLabel: 'Remove All', danger: true })) return;
+                removeAllAndMelonBtn.disabled = true;
+                const result = await window.cvrma.removeAllModsAndMelon(installDir);
+                if (result.success) {
+                    setStatus(`Removed ${result.count} mod file(s) and MelonLoader.`, 'ok');
+                    window.ModsPage.notifyModsWiped(installDir);
+                    render(installDir, storeType);
+                } else {
+                    setStatus(`Failed: ${result.error}`, 'err');
+                    removeAllAndMelonBtn.disabled = false;
+                }
+            });
+        }
+
+        // --- Update Logic ---
+        const versionText = document.getElementById('opt-version-text');
+        const updateInfo = document.getElementById('update-info-text');
+        const checkBtn = document.getElementById('opt-check-update');
+        const downloadBtn = document.getElementById('opt-download-update');
+        const installBtn = document.getElementById('opt-install-update');
+        const progressWrap = document.getElementById('update-progress-wrap');
+        const progressBar = document.getElementById('update-progress-bar');
+
+        const version = await window.cvrma.getAppVersion();
+        if (versionText) versionText.textContent = `v${version}`;
+
+        if (checkBtn) {
+            checkBtn.addEventListener('click', () => {
+                checkBtn.disabled = true;
+                updateInfo.textContent = 'Checking...';
+                window.cvrma.checkForUpdates();
+            });
+        }
+
+        if (downloadBtn) {
+            downloadBtn.addEventListener('click', () => {
+                downloadBtn.style.display = 'none';
+                progressWrap.style.display = 'block';
+                window.cvrma.downloadUpdate();
+            });
+        }
+
+        if (installBtn) {
+            installBtn.addEventListener('click', () => {
+                window.cvrma.quitAndInstall();
+            });
+        }
+
+        window.cvrma.onUpdateAvailable((info) => {
+            updateInfo.textContent = `New version available: v${info.version}`;
+            downloadBtn.style.display = 'inline-flex';
+            checkBtn.style.display = 'none';
+        });
+
+        window.cvrma.onUpdateNotAvailable(() => {
+            updateInfo.textContent = 'Application is up to date';
+            if (checkBtn) checkBtn.disabled = false;
+        });
+
+        window.cvrma.onUpdateError((msg) => {
+            updateInfo.textContent = `Update check failed.`;
+            console.error('Update error:', msg);
+            if (checkBtn) checkBtn.disabled = false;
+        });
+
+        window.cvrma.onUpdateDownloadProgress((p) => {
+            progressBar.style.width = `${p}%`;
+        });
+
+        window.cvrma.onUpdateDownloaded(() => {
+            updateInfo.textContent = 'Update ready to install';
+            progressWrap.style.display = 'none';
+            installBtn.style.display = 'inline-flex';
+        });
     }
 
     function setStatus(text, type = '') {

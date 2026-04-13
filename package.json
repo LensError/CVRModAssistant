@@ -1,12 +1,12 @@
 {
   "name": "cvr-mod-assistant",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Mod manager for ChilloutVR",
   "main": "main.js",
   "scripts": {
     "start": "node_modules\\electron\\dist\\electron.exe .",
     "dev": "node_modules\\electron\\dist\\electron.exe . --inspect",
-    "build": "node node_modules/electron-builder/cli.js --win portable"
+    "build": "node node_modules/electron-builder/cli.js --win"
   },
   "build": {
     "appId": "com.lenserror.cvr-mod-assistant",
@@ -17,28 +17,43 @@
     "files": [
       "main.js",
       "preload.js",
-      "renderer/**/*",
-      "node_modules/**/*",
-      "!node_modules/electron-builder/**/*",
-      "!node_modules/.cache/**/*"
+      "dll-parser.js",
+      "renderer/**/*"
     ],
     "win": {
       "icon": "renderer/assets/icons/icon.ico",
       "target": [
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
-        }
+        "portable",
+        "nsis"
       ]
     },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true,
+      "artifactName": "CVRModAssistant_Setup.${ext}",
+      "perMachine": false,
+      "installerHeaderIcon": "renderer/assets/icons/icon.ico"
+    },
     "portable": {
-      "artifactName": "CVRModAssistant.exe"
+      "artifactName": "CVRModAssistant.${ext}"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "LensError",
+      "repo": "CVRModAssistant"
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LensError/CVRModAssistant.git"
   },
   "dependencies": {
     "adm-zip": "^0.5.10",
+    "electron-updater": "^6.8.3",
+    "v8-compile-cache": "^2.3.0",
     "winreg": "^1.2.4"
   },
   "devDependencies": {
