@@ -342,6 +342,11 @@ ipcMain.handle('open-dir', (_e, dirPath) => shell.openPath(dirPath));
 
 ipcMain.handle('open-app-data', () => shell.openPath(app.getPath('userData')));
 
+ipcMain.handle('open-game-app-data', () => {
+    const cvrAppData = path.join(app.getPath('appData'), '..', 'LocalLow', 'ChilloutVR', 'ChilloutVR');
+    return shell.openPath(cvrAppData);
+});
+
 ipcMain.handle('scan-installed-mods', (_e, installDir) => {
     if (!installDir || !fs.existsSync(installDir)) return [];
     return scanInstalledMods(installDir);

@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('cvrma', {
     selectDir: () => ipcRenderer.invoke('select-dir'),
     openDir: (dirPath) => ipcRenderer.invoke('open-dir', dirPath),
     openAppData: () => ipcRenderer.invoke('open-app-data'),
+    openGameAppData: () => ipcRenderer.invoke('open-game-app-data'),
 
     // Mod scanning
     scanInstalledMods: (installDir) => ipcRenderer.invoke('scan-installed-mods', installDir),

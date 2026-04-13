@@ -3,117 +3,157 @@ window.OptionsPage = (() => {
         const content = document.getElementById('page-content');
         content.innerHTML = `
             <div class="options-page fade-in">
-                <!-- Install Directory -->
-                <div class="options-section">
-                    <div class="options-section-title">Installation</div>
-
-                    <div class="options-row">
-                        <span class="options-label">CVR Directory</span>
-                        <div class="dir-display" id="dir-display" title="${escHtml(installDir || '')}">
-                            ${escHtml(installDir || 'Not detected')}
-                        </div>
-                    </div>
-
-                    <div class="options-row" style="gap:8px;margin-left:120px;">
-                        <button class="btn-ghost" id="opt-select-dir">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-                            </svg>
-                            Select Folder
-                        </button>
-                        <button class="btn-ghost" id="opt-open-dir" ${!installDir ? 'disabled' : ''}>
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                                <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-                            </svg>
-                            Open Folder
-                        </button>
-                    </div>
-
-                    <div class="options-row">
-                        <span class="options-label">Store</span>
-                        <span style="font-size:12px;color:var(--text-2);">${escHtml(storeType || 'Unknown')}</span>
-                    </div>
-                </div>
-
-                <!-- MelonLoader Status -->
-                <div class="options-section">
-                    <div class="options-section-title">MelonLoader</div>
-                    <div class="ml-status-row">
-                        <div class="ml-status-dot" id="ml-dot"></div>
-                        <span class="ml-status-text" id="ml-status-text">Checking…</span>
-                    </div>
-                    <div style="display:flex;gap:8px;margin-top:4px;">
-                        <button class="btn-ghost" id="opt-install-ml" ${!installDir ? 'disabled' : ''}>
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-                            </svg>
-                            Install / Update ML
-                        </button>
-                        <button class="btn-danger" id="opt-remove-ml" ${!installDir ? 'disabled' : ''}>
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
-                            </svg>
-                            Remove ML
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Mods -->
-                <div class="options-section">
-                    <div class="options-section-title">Mods</div>
-                    <div class="options-row">
-                        <input type="checkbox" id="opt-hide-broken" class="custom-checkbox" />
-                        <label for="opt-hide-broken" class="options-label" style="min-width:unset;cursor:pointer;">Hide broken / retired mods</label>
-                    </div>
-                </div>
-
-                <!-- Presets -->
-                <div class="options-section">
-                    <div class="options-section-title">Presets</div>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                        <button class="btn-ghost" id="opt-export-presets">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-                            </svg>
-                            Export Presets
-                        </button>
-                        <button class="btn-ghost" id="opt-import-presets">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-                            </svg>
-                            Import Presets
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Diagnostics / Danger Zone -->
-                <div class="options-section">
-                    <div class="options-section-title">Diagnostics</div>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
-                        <button class="btn-ghost" id="opt-open-appdata">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
-                            </svg>
-                            Open App Data
-                        </button>
-                    </div>
-
-                    <div class="danger-zone">
-                        <div class="danger-zone-title">Destructive Actions</div>
-                        <div class="danger-actions">
-                            <button class="btn-danger" id="opt-remove-all-mods" ${!installDir ? 'disabled' : ''}>
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
-                                    <path d="M10 11v6m4-6v6" stroke-linecap="round"/>
+                <div class="options-grid">
+                    
+                    <!-- Environment Card -->
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
                                 </svg>
-                                Remove All Mods
-                            </button>
+                            </div>
+                            <div class="card-title-group">
+                                <span class="card-label">App Environment</span>
+                                <span class="card-title">Installation</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="settings-row">
+                                <div class="settings-row-header">
+                                    <span class="settings-label">CVR Directory</span>
+                                    <span class="badge-store">${escHtml(storeType || 'Unknown')}</span>
+                                </div>
+                                <div class="dir-display" title="${escHtml(installDir || '')}">
+                                    ${escHtml(installDir || 'Not detected')}
+                                </div>
+                                <span class="settings-desc">The location where ChilloutVR is installed.</span>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn-ghost" id="opt-select-dir">Change Folder</button>
+                            <button class="btn-ghost" id="opt-open-dir" ${!installDir ? 'disabled' : ''}>Show in Explorer</button>
                         </div>
                     </div>
+
+                    <!-- MelonLoader Card -->
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/><path d="M8 12h8"/>
+                                </svg>
+                            </div>
+                            <div class="card-title-group">
+                                <span class="card-label">Modding Base</span>
+                                <span class="card-title">MelonLoader</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="ml-status-box">
+                                <div class="ml-status-dot" id="ml-dot"></div>
+                                <span class="ml-status-text" id="ml-status-text">Checking status…</span>
+                            </div>
+                            <span class="settings-desc">MelonLoader is required to run any mods in ChilloutVR.</span>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn-ghost" id="opt-install-ml" ${!installDir ? 'disabled' : ''}>Install / Update</button>
+                            <button class="btn-danger" id="opt-remove-ml" ${!installDir ? 'disabled' : ''}>Uninstall</button>
+                        </div>
+                    </div>
+
+                    <!-- Preferences Card -->
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                                </svg>
+                            </div>
+                            <div class="card-title-group">
+                                <span class="card-label">User Experience</span>
+                                <span class="card-title">Preferences</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="settings-toggle-row" id="toggle-hide-broken">
+                                <div class="settings-row">
+                                    <span class="settings-label">Filter Mods</span>
+                                    <span class="settings-desc">Hide mods marked as broken or retired from the main list.</span>
+                                </div>
+                                <input type="checkbox" id="opt-hide-broken" class="custom-checkbox" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data Card -->
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                                </svg>
+                            </div>
+                            <div class="card-title-group">
+                                <span class="card-label">Configuration</span>
+                                <span class="card-title">Presets Data</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <span class="settings-desc">Backup or restore your mod presets across different installations or share them with others.</span>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn-ghost" id="opt-export-presets">Export</button>
+                            <button class="btn-ghost" id="opt-import-presets">Import</button>
+                        </div>
+                    </div>
+
+                    <!-- Quick Links Card -->
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                                </svg>
+                            </div>
+                            <div class="card-title-group">
+                                <span class="card-label">Shortcuts</span>
+                                <span class="card-title">Quick Links</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <span class="settings-desc">Open commonly used folders in Explorer.</span>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn-ghost" id="opt-open-game-dir" ${!installDir ? 'disabled' : ''}>Game Folder</button>
+                            <button class="btn-ghost" id="opt-open-game-appdata" ${!installDir ? 'disabled' : ''}>Game AppData</button>
+                            <button class="btn-ghost" id="opt-open-appdata">App Data</button>
+                        </div>
+                    </div>
+
+                    <!-- Maintenance Card (Danger) -->
+                    <div class="settings-card danger">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+                                </svg>
+                            </div>
+                            <div class="card-title-group">
+                                <span class="card-label">Troubleshooting</span>
+                                <span class="card-title">Maintenance</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <span class="settings-desc">Destructive operations for troubleshooting. Use with caution.</span>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn-danger" id="opt-remove-all-mods" ${!installDir ? 'disabled' : ''}>Wipe Mods</button>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         `;
@@ -125,29 +165,26 @@ window.OptionsPage = (() => {
                 if (dot && text) {
                     if (r.installed) {
                         dot.classList.add('installed');
-                        text.textContent = 'MelonLoader is installed and detected.';
+                        text.textContent = 'Installed and detected';
                         text.style.color = 'var(--online)';
                     } else {
-                        text.textContent = 'MelonLoader is NOT installed.';
-                        text.style.color = 'var(--text-2)';
+                        text.textContent = 'Not installed';
+                        text.style.color = 'var(--text-3)';
                     }
                 }
             });
-        } else {
-            const dot = document.getElementById('ml-dot');
-            const text = document.getElementById('ml-status-text');
-            if (dot && text) { text.textContent = 'Set install directory first.'; }
         }
 
+        // --- Event Listeners ---
+        
         document.getElementById('opt-select-dir').addEventListener('click', async () => {
             const result = await window.cvrma.selectDir();
             if (!result) return;
             if (result.error) { setStatus(result.error, 'err'); return; }
             await window.cvrma.saveSettings({ installFolder: result.dir, storeType: result.store });
             window.App.setInstallDir(result.dir, result.store);
-            // Re-render with new dir
             render(result.dir, result.store);
-            setStatus(`Install directory set to: ${result.dir}`, 'ok');
+            setStatus(`Install directory updated.`, 'ok');
         });
 
         const openDirBtn = document.getElementById('opt-open-dir');
@@ -169,7 +206,7 @@ window.OptionsPage = (() => {
                 } else {
                     setStatus(`MelonLoader install failed: ${result.error}`, 'err');
                     installMlBtn.disabled = false;
-                    installMlBtn.textContent = 'Install / Update ML';
+                    installMlBtn.textContent = 'Install / Update';
                 }
             });
         }
@@ -190,10 +227,21 @@ window.OptionsPage = (() => {
             });
         }
 
+        // Hide Broken Mods Toggle
         const hideBrokenChk = document.getElementById('opt-hide-broken');
-        if (hideBrokenChk) {
+        const hideBrokenRow = document.getElementById('toggle-hide-broken');
+        if (hideBrokenChk && hideBrokenRow) {
             const s = await window.cvrma.loadSettings();
-            hideBrokenChk.checked = s.hideBroken !== false; // default true
+            hideBrokenChk.checked = s.hideBroken !== false;
+
+            hideBrokenRow.addEventListener('click', (e) => {
+                // If it wasn't the checkbox itself that was clicked, toggle it
+                if (e.target !== hideBrokenChk) {
+                    hideBrokenChk.checked = !hideBrokenChk.checked;
+                    hideBrokenChk.dispatchEvent(new Event('change'));
+                }
+            });
+
             hideBrokenChk.addEventListener('change', () => {
                 window.cvrma.saveSettings({ hideBroken: hideBrokenChk.checked });
             });
@@ -203,23 +251,35 @@ window.OptionsPage = (() => {
             const result = await window.cvrma.exportPresets();
             if (result.cancelled) return;
             if (result.error) { setStatus(`Export failed: ${result.error}`, 'err'); return; }
-            setStatus(`Presets exported to: ${result.path}`, 'ok');
+            setStatus(`Presets exported successfully.`, 'ok');
         });
 
         document.getElementById('opt-import-presets').addEventListener('click', async () => {
             const result = await window.cvrma.importPresets();
             if (result.cancelled) return;
             if (result.error) { setStatus(`Import failed: ${result.error}`, 'err'); return; }
-            const count = Object.keys(result.presets).length;
-            setStatus(`Presets imported (${count} total). Reload the Mods page to see changes.`, 'ok');
+            const count = Object.keys(result.presets || {}).count || 'some';
+            setStatus(`Presets imported successfully.`, 'ok');
         });
+
+        const openGameDirBtn = document.getElementById('opt-open-game-dir');
+        if (openGameDirBtn) {
+            openGameDirBtn.addEventListener('click', () => {
+                if (installDir) window.cvrma.openDir(installDir);
+            });
+        }
+
+        const openGameAppDataBtn = document.getElementById('opt-open-game-appdata');
+        if (openGameAppDataBtn) {
+            openGameAppDataBtn.addEventListener('click', () => window.cvrma.openGameAppData());
+        }
 
         document.getElementById('opt-open-appdata').addEventListener('click', () => window.cvrma.openAppData());
 
         const removeAllBtn = document.getElementById('opt-remove-all-mods');
         if (removeAllBtn) {
             removeAllBtn.addEventListener('click', async () => {
-                if (!confirm('Remove ALL mods from Mods/ and Plugins/ directories? This cannot be undone.')) return;
+                if (!confirm('Remove ALL mods? This cannot be undone.')) return;
                 removeAllBtn.disabled = true;
                 const result = await window.cvrma.removeAllMods(installDir);
                 if (result.success) {
