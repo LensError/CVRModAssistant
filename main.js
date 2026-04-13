@@ -4,6 +4,7 @@ const fs = require('fs');
 const https = require('https');
 const http = require('http');
 const AdmZip = require('adm-zip');
+const { parseMelonInfo } = require('./dll-parser');
 
 // ─── Settings ────────────────────────────────────────────────────────────────
 const settingsPath = path.join(app.getPath('userData'), 'settings.json');
@@ -128,12 +129,17 @@ function scanInstalledMods(installDir) {
         try {
             const files = fs.readdirSync(fullPath).filter(f => f.endsWith('.dll'));
             for (const file of files) {
+                const filePath = path.join(fullPath, file);
+                const modInfo  = parseMelonInfo(filePath);
                 results.push({
                     fileName: file,
                     baseName: file.replace(/\.dll$/i, ''),
-                    filePath: path.join(fullPath, file),
+                    filePath,
                     isBroken,
-                    isRetired
+                    isRetired,
+                    version: modInfo?.version || null,
+                    name:    modInfo?.name    || null,
+                    author:  modInfo?.author  || null,
                 });
             }
         } catch (e) { /* skip unreadable dirs */ }
@@ -366,11 +372,6 @@ ipcMain.handle('remove-melon-loader', (_e, installDir) => {
 ipcMain.handle('install-mod', async (_e, installDir, mod) => {
     try {
         const filePath = await installMod(installDir, mod, mainWindow);
-        // Persist installed version so update detection works on next launch
-        const current = loadSettings();
-        const installedVersions = current.installedVersions || {};
-        installedVersions[mod.name] = mod.version;
-        saveSettings({ installedVersions });
         return { success: true, filePath };
     } catch (e) {
         return { success: false, error: e.message };

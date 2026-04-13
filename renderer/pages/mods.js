@@ -14,7 +14,6 @@ window.ModsPage = (() => {
         allMods:          [],
         flagMap:          {},
         installedFiles:      [],
-        installedVersions:   {},
         modList:             [],
         filter:              '',
         hideBroken:       true,
@@ -77,8 +76,8 @@ window.ModsPage = (() => {
                 category,
                 isSelected:       (ver.approvalStatus === 2 || ver.approvalStatus === 3) ? false : isSelected,
                 installedFile:    installed || null,
-                installedVersion: installed ? (state.installedVersions[ver.name] || null) : null,
-                needsUpdate:      installed ? (state.installedVersions[ver.name] !== ver.modVersion) : false,
+                installedVersion: installed ? (installed.version || null) : null,
+                needsUpdate:      installed ? (installed.version !== ver.modVersion) : false,
             });
         }
 
@@ -102,7 +101,7 @@ window.ModsPage = (() => {
                 category:         UNMANAGED_CAT,
                 isSelected:       true,  // visually checked (installed)
                 installedFile:    f,
-                installedVersion: f.baseName,
+                installedVersion: f.version || f.baseName,
             });
         }
 
@@ -652,8 +651,6 @@ window.ModsPage = (() => {
         try {
             state.installedFiles = await window.cvrma.scanInstalledMods(state.installDir);
         } catch { state.installedFiles = []; }
-        const refreshedSettings = await window.cvrma.loadSettings();
-        state.installedVersions = refreshedSettings.installedVersions || {};
 
         saveCurrentToPreset();
         state.modList = buildModList(state.allMods);
@@ -843,7 +840,6 @@ window.ModsPage = (() => {
         await loadPresets();
         const savedSettings = await window.cvrma.loadSettings();
         state.hideBroken = savedSettings.hideBroken !== false; // default true
-        state.installedVersions = savedSettings.installedVersions || {};
         renderPage();
         renderPresetBar();
         setStatus('Scanning installed mods…', '');
