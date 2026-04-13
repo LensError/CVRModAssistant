@@ -1,7 +1,5 @@
 // dll-parser.js
 // Reads MelonInfoAttribute / MelonModInfoAttribute from .NET DLL files.
-// Equivalent to what the C# app does via Mono.Cecil's AssemblyDefinition.ReadAssembly().
-//
 // Format reference: ECMA-335 Common Language Infrastructure specification.
 
 'use strict';
@@ -29,26 +27,26 @@ function _extractMelonInfo(buf) {
     const peOff = buf.readUInt32LE(0x3C);
     if (buf.readUInt32LE(peOff) !== 0x00004550) return null; // 'PE\0\0'
 
-    const coffOff    = peOff + 4;
-    const numSects   = buf.readUInt16LE(coffOff + 2);
-    const optHdrOff  = coffOff + 20;
+    const coffOff = peOff + 4;
+    const numSects = buf.readUInt16LE(coffOff + 2);
+    const optHdrOff = coffOff + 20;
     const optHdrSize = buf.readUInt16LE(coffOff + 16);
-    const sectsOff   = optHdrOff + optHdrSize;
+    const sectsOff = optHdrOff + optHdrSize;
 
     const isPE32Plus = buf.readUInt16LE(optHdrOff) === 0x20B;
 
     // DataDirectory[14] = CLR runtime header (COM descriptor)
-    const ddBase  = optHdrOff + (isPE32Plus ? 112 : 96);
-    const clrRVA  = buf.readUInt32LE(ddBase + 14 * 8);
+    const ddBase = optHdrOff + (isPE32Plus ? 112 : 96);
+    const clrRVA = buf.readUInt32LE(ddBase + 14 * 8);
     if (clrRVA === 0) return null; // not a .NET assembly
 
     // RVA → file offset via section table
     function rvaToOff(rva) {
         for (let i = 0; i < numSects; i++) {
-            const sh    = sectsOff + i * 40;
+            const sh = sectsOff + i * 40;
             const vAddr = buf.readUInt32LE(sh + 12);
             const vSize = buf.readUInt32LE(sh + 8);
-            const rOff  = buf.readUInt32LE(sh + 20);
+            const rOff = buf.readUInt32LE(sh + 20);
             const rSize = buf.readUInt32LE(sh + 16);
             if (rva >= vAddr && rva < vAddr + Math.max(vSize, rSize))
                 return rOff + (rva - vAddr);
@@ -68,7 +66,7 @@ function _extractMelonInfo(buf) {
     if (buf.readUInt32LE(mdOff) !== 0x424A5342) return null; // 'BSJB'
 
     // Version string length (already padded to 4-byte boundary)
-    const verLen    = buf.readUInt32LE(mdOff + 12);
+    const verLen = buf.readUInt32LE(mdOff + 12);
     // Layout after signature: sig(4) + major(2) + minor(2) + reserved(4) + length(4) + version(verLen) + flags(2) + streams(2)
     const numStreams = buf.readUInt16LE(mdOff + 16 + verLen + 2);
 
@@ -76,28 +74,28 @@ function _extractMelonInfo(buf) {
 
     let shp = mdOff + 16 + verLen + 4; // first stream header
     for (let i = 0; i < numStreams; i++) {
-        const stOff  = buf.readUInt32LE(shp);
+        const stOff = buf.readUInt32LE(shp);
         const stSize = buf.readUInt32LE(shp + 4);
-        let nameEnd  = shp + 8;
+        let nameEnd = shp + 8;
         while (buf[nameEnd] !== 0) nameEnd++;
-        const name    = buf.toString('ascii', shp + 8, nameEnd);
+        const name = buf.toString('ascii', shp + 8, nameEnd);
         const nameRaw = nameEnd - shp - 8 + 1; // byte count including null terminator
         shp += 8 + Math.ceil(nameRaw / 4) * 4; // advance past padded name
 
         const abs = mdOff + stOff;
-        if (name === '#~' || name === '#-')  { tablesOff = abs; }
-        else if (name === '#Strings')        { stringsOff = abs; stringsSize = stSize; }
-        else if (name === '#Blob')           { blobOff = abs; }
+        if (name === '#~' || name === '#-') { tablesOff = abs; }
+        else if (name === '#Strings') { stringsOff = abs; stringsSize = stSize; }
+        else if (name === '#Blob') { blobOff = abs; }
     }
     if (tablesOff < 0 || stringsOff < 0 || blobOff < 0) return null;
 
     // ── 4. Tables stream header ───────────────────────────────────────────────
     // Layout: reserved(4) + major(1) + minor(1) + heapSizes(1) + reserved2(1) + valid(8) + sorted(8) + rows...
-    const heapSizes  = buf[tablesOff + 6];
-    const strIdxSz   = (heapSizes & 0x01) ? 4 : 2;
-    const guidIdxSz  = (heapSizes & 0x02) ? 4 : 2;
-    const blobIdxSz  = (heapSizes & 0x04) ? 4 : 2;
-    const validMask  = buf.readBigUInt64LE(tablesOff + 8);
+    const heapSizes = buf[tablesOff + 6];
+    const strIdxSz = (heapSizes & 0x01) ? 4 : 2;
+    const guidIdxSz = (heapSizes & 0x02) ? 4 : 2;
+    const blobIdxSz = (heapSizes & 0x04) ? 4 : 2;
+    const validMask = buf.readBigUInt64LE(tablesOff + 8);
 
     // Row counts (one uint32 per present table, in table-number order)
     const rc = new Int32Array(64);
@@ -118,19 +116,19 @@ function _extractMelonInfo(buf) {
     function siSz(t) { return rc[t] > 0xFFFF ? 4 : 2; } // simple (single-table) index
 
     // Pre-compute coded index sizes needed for row-size expressions
-    const rsSz   = ciSz(2, 0x00, 0x1A, 0x23, 0x01);                   // ResolutionScope
+    const rsSz = ciSz(2, 0x00, 0x1A, 0x23, 0x01);                   // ResolutionScope
     const tdorSz = ciSz(2, 0x02, 0x01, 0x1B);                          // TypeDefOrRef
-    const mrpSz  = ciSz(3, 0x02, 0x01, 0x1A, 0x06, 0x1B);             // MemberRefParent
-    const hcaSz  = ciSz(5,
+    const mrpSz = ciSz(3, 0x02, 0x01, 0x1A, 0x06, 0x1B);             // MemberRefParent
+    const hcaSz = ciSz(5,
         0x06, 0x04, 0x01, 0x02, 0x08, 0x09, 0x0A, 0x00, 0x0E,         // HasCustomAttribute
         0x17, 0x14, 0x11, 0x1A, 0x1B, 0x20, 0x23, 0x26, 0x27,
         0x28, 0x2A, 0x2C, 0x2B);
     const hcatSz = ciSz(3, 0x06, 0x0A);                                // HasCustomAttributeType
-    const mdrSz  = ciSz(1, 0x06, 0x0A);                                // MethodDefOrRef
-    const hcsSz  = ciSz(2, 0x04, 0x08, 0x17);                          // HasConstant
-    const hfmSz  = ciSz(1, 0x04, 0x08);                                // HasFieldMarshal
-    const hdsSz  = ciSz(2, 0x02, 0x06, 0x20);                          // HasDeclSecurity
-    const hsmSz  = ciSz(1, 0x14, 0x17);                                // HasSemantics
+    const mdrSz = ciSz(1, 0x06, 0x0A);                                // MethodDefOrRef
+    const hcsSz = ciSz(2, 0x04, 0x08, 0x17);                          // HasConstant
+    const hfmSz = ciSz(1, 0x04, 0x08);                                // HasFieldMarshal
+    const hdsSz = ciSz(2, 0x02, 0x06, 0x20);                          // HasDeclSecurity
+    const hsmSz = ciSz(1, 0x14, 0x17);                                // HasSemantics
     const mfwdSz = ciSz(1, 0x04, 0x06);                                // MemberForwarded
     const implSz = ciSz(2, 0x26, 0x23, 0x27);                          // Implementation
     const tomdSz = ciSz(1, 0x02, 0x06);                                // TypeOrMethodDef
@@ -216,24 +214,24 @@ function _extractMelonInfo(buf) {
 
     // ── 5. TypeRef table: find rows for MelonInfoAttribute / MelonModInfoAttribute ──
     const TARGET_NAMES = new Set(['MelonInfoAttribute', 'MelonModInfoAttribute']);
-    const trSz    = ROW_SIZES[0x01];
+    const trSz = ROW_SIZES[0x01];
     const trCount = rc[0x01] || 0;
 
     const targetTypeRefs = [];
     for (let i = 1; i <= trCount; i++) {
-        const off     = tblOff[0x01] + (i - 1) * trSz;
+        const off = tblOff[0x01] + (i - 1) * trSz;
         const nameIdx = rdIdx(off + rsSz, strIdxSz);
         if (TARGET_NAMES.has(getString(nameIdx))) targetTypeRefs.push(i);
     }
     if (targetTypeRefs.length === 0) return null;
 
     // ── 6. MemberRef table: find .ctor on those types ─────────────────────────
-    const mrSz    = ROW_SIZES[0x0A];
+    const mrSz = ROW_SIZES[0x0A];
     const mrCount = rc[0x0A] || 0;
 
     const targetMRefs = [];
     for (let i = 1; i <= mrCount; i++) {
-        const off      = tblOff[0x0A] + (i - 1) * mrSz;
+        const off = tblOff[0x0A] + (i - 1) * mrSz;
         const classRaw = rdIdx(off, mrpSz);
         // MemberRefParent tag 1 = TypeRef
         if ((classRaw & 0x07) !== 1) continue;
@@ -248,7 +246,7 @@ function _extractMelonInfo(buf) {
     // HasCustomAttribute coded index for Assembly: tag = 14 (5-bit), row 1
     // Encoded value = (1 << 5) | 14 = 46
     const ASSEMBLY_PARENT = (1 << 5) | 14;
-    const caSz    = ROW_SIZES[0x0C];
+    const caSz = ROW_SIZES[0x0C];
     const caCount = rc[0x0C] || 0;
 
     for (let i = 1; i <= caCount; i++) {
@@ -269,7 +267,7 @@ function _extractMelonInfo(buf) {
         //   [3] SerString — author
         //   [4] SerString — download link (optional)
         const blobIdx = rdIdx(off + hcaSz + hcatSz, blobIdxSz);
-        const blob    = getBlob(blobIdx);
+        const blob = getBlob(blobIdx);
         if (blob.length < 4) continue;
         if (blob[0] !== 0x01 || blob[1] !== 0x00) continue; // bad prolog
 
@@ -291,9 +289,9 @@ function _extractMelonInfo(buf) {
         // args indices: [0]=Type, [1]=name, [2]=version, [3]=author
         if (args.length >= 3) {
             return {
-                name:    args[1] || null,
+                name: args[1] || null,
                 version: args[2] || null,
-                author:  args[3] || null,
+                author: args[3] || null,
             };
         }
     }
