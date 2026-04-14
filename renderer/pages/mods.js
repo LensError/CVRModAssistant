@@ -530,7 +530,7 @@ window.ModsPage = (() => {
         requestAnimationFrame(() => flyout.classList.add('open'));
         document.getElementById('flyout-close-btn').onclick = closeFlyout;
         flyout.querySelectorAll('[data-ext]').forEach(el => {
-            el.addEventListener('click', e => { e.preventDefault(); window.cvrma.openDir(el.dataset.ext); });
+            el.addEventListener('click', e => { e.preventDefault(); window.cvrma.openExternal(el.dataset.ext); });
         });
         const deleteBtn = document.getElementById('flyout-delete-unmanaged-btn');
         if (deleteBtn && item.isUnmanaged && item.installedFile) {

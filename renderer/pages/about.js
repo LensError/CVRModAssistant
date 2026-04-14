@@ -106,7 +106,7 @@ window.AboutPage = (() => {
         content.querySelectorAll('[data-ext]').forEach(el => {
             el.addEventListener('click', e => {
                 e.preventDefault();
-                window.cvrma.openDir(el.dataset.ext);
+                window.cvrma.openExternal(el.dataset.ext);
             });
         });
     }

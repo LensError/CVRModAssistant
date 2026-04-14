@@ -280,7 +280,9 @@ function _extractMelonInfo(buf) {
                 pos++;
                 continue;
             }
+            if (pos >= blob.length) break;
             const [len, adv] = readCompressedUInt(blob, pos);
+            if (pos + adv + len > blob.length) break; // out-of-bounds guard
             pos += adv;
             args.push(blob.toString('utf8', pos, pos + len));
             pos += len;

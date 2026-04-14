@@ -390,7 +390,7 @@ window.OptionsPage = (() => {
 
         if (openReleasesBtn) {
             openReleasesBtn.addEventListener('click', () => {
-                window.cvrma.openDir('https://github.com/LensError/CVRModAssistant/releases/latest');
+                window.cvrma.openExternal('https://github.com/LensError/CVRModAssistant/releases/latest');
             });
         }
 

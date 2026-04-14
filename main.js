@@ -17,7 +17,7 @@ function loadSettings() {
         if (fs.existsSync(settingsPath)) {
             return JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
         }
-    } catch (e) { /* ignore */ }
+    } catch (e) { console.error('Failed to load settings:', e); }
     return {};
 }
 
@@ -114,6 +114,9 @@ async function detectInstallDir() {
     return null;
 }
 
+// ─── Shared utilities ────────────────────────────────────────────────────────
+const normFn = s => s.toLowerCase().replace(/[\s\-_.]/g, '');
+
 // ─── Mod file scanning (filename-based only) ─────────────────────────────────
 function scanInstalledMods(installDir) {
     const results = [];
@@ -145,7 +148,7 @@ function scanInstalledMods(installDir) {
                     author:  modInfo?.author  || null,
                 });
             }
-        } catch (e) { /* skip unreadable dirs */ }
+        } catch (e) { console.error('Failed to scan directory:', fullPath, e); }
     }
     return results;
 }
@@ -210,8 +213,11 @@ async function installMelonLoader(installDir, win) {
 
     const zip = new AdmZip(zipBuffer);
     const entries = zip.getEntries();
+    const resolvedBase = path.resolve(installDir);
     for (const entry of entries) {
+        if (entry.entryName.includes('..')) continue; // guard against zip path traversal
         const targetPath = path.join(installDir, entry.entryName);
+        if (!path.resolve(targetPath).startsWith(resolvedBase)) continue;
         if (entry.isDirectory) {
             fs.mkdirSync(targetPath, { recursive: true });
         } else {
@@ -245,7 +251,6 @@ async function installMod(installDir, mod, win) {
     // mod name (e.g. "red.sim.LightVolumesUdon.dll" when installing "LightVolumesUdon").
     const fileName = `${name}.dll`;
     const targetPath = path.join(targetDir, fileName);
-    const normFn = s => s.toLowerCase().replace(/[\s\-_.]/g, '');
     const nameNorm = normFn(name);
     try {
         for (const f of fs.readdirSync(targetDir).filter(f => f.endsWith('.dll'))) {
@@ -253,7 +258,7 @@ async function installMod(installDir, mod, win) {
             if (normFn(f.replace(/\.dll$/i, '')).endsWith(nameNorm))
                 fs.unlinkSync(path.join(targetDir, f));
         }
-    } catch (e) { /* skip unreadable dirs */ }
+    } catch (e) { console.error('Failed to clean up old mod files in', targetDir, ':', e); }
 
     fs.writeFileSync(targetPath, buffer);
     win.webContents.send('status-update', { text: `Installed ${name}.`, progress: 1.0 });
@@ -394,6 +399,14 @@ ipcMain.handle('select-dir', async () => {
 
 ipcMain.handle('open-dir', (_e, dirPath) => shell.openPath(dirPath));
 
+ipcMain.handle('open-external', (_e, url) => {
+    try {
+        const parsed = new URL(url);
+        if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return;
+        return shell.openExternal(url);
+    } catch { /* invalid URL, ignore */ }
+});
+
 ipcMain.handle('open-app-data', () => shell.openPath(app.getPath('userData')));
 
 ipcMain.handle('open-game-app-data', () => {
@@ -494,7 +507,7 @@ ipcMain.handle('export-presets', async () => {
         fs.writeFileSync(filePath, JSON.stringify(presets, null, 2), 'utf-8');
         return { success: true, path: filePath };
     } catch (e) {
-        return { error: e.message };
+        return { success: false, error: e.message };
     }
 });
 
