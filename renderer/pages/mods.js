@@ -231,8 +231,11 @@ window.ModsPage = (() => {
             const newName = await promptName('Rename to:', state.activePresetName);
             if (!newName || newName === state.activePresetName) return;
             if (state.presets[newName]) { setStatus(`"${newName}" already exists.`, 'wrn'); return; }
-            state.presets[newName] = state.presets[state.activePresetName];
-            delete state.presets[state.activePresetName];
+            // Rebuild object preserving insertion order with the new key in place
+            const rebuilt = {};
+            for (const [k, v] of Object.entries(state.presets))
+                rebuilt[k === state.activePresetName ? newName : k] = v;
+            state.presets = rebuilt;
             state.activePresetName = newName;
             await savePresets();
             renderPresetBar();

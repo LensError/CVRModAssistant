@@ -297,8 +297,8 @@ window.OptionsPage = (() => {
             const result = await window.cvrma.importPresets();
             if (result.cancelled) return;
             if (result.error) { setStatus(`Import failed: ${result.error}`, 'err'); return; }
-            const count = Object.keys(result.presets || {}).count || 'some';
-            setStatus(`Presets imported successfully.`, 'ok');
+            const count = Object.keys(result.presets || {}).length;
+            setStatus(`Imported ${count} preset${count !== 1 ? 's' : ''}.`, 'ok');
         });
 
         const openGameDirBtn = document.getElementById('opt-open-game-dir');

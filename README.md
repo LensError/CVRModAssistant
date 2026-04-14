@@ -21,6 +21,8 @@ Manage different mod configurations effortlessly with the new Presets feature. C
 ![Presets Bar](media/presetsbar.png)
 ![Adding a Preset](media/addingpreset.png)
 
+Presets can also be exported and imported as JSON files from the **Options** page, making it easy to back up your mod lists, move them between machines, or share them with friends so they can load the exact same set of mods in one click.
+
 ## Installation
 
 Download the latest version from [Releases](https://github.com/LensError/CVRModAssistant/releases).
