@@ -28,7 +28,13 @@ window.App = (() => {
             if (data.progress !== undefined) setProgress(data.progress);
         });
 
-        if (!appState.settings.termsAccepted) {
+        window.cvrma.onUpdateAvailable(() => {
+            const dot = document.getElementById('update-dot');
+            if (dot) dot.style.display = 'block';
+        });
+
+        const termsVer = appState.settings.termsAcceptedVersion || 0;
+        if (!appState.settings.termsAccepted || termsVer < window.SharedData.TERMS_VERSION) {
             showIntro();
         } else {
             enterApp();

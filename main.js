@@ -296,6 +296,12 @@ function removeAllModsAndMelon(installDir) {
     return count;
 }
 
+// ─── Update state ─────────────────────────────────────────────────────────────
+// Cached so the Options page can read it when it renders (the events already
+// fired during the startup check by the time the user navigates there).
+let updateCheckState = null; // null | 'checking' | 'available' | 'not-available' | 'error'
+let updateCheckInfo  = null; // the info object from update-available, if any
+
 // ─── Window ───────────────────────────────────────────────────────────────────
 let mainWindow;
 
@@ -322,15 +328,23 @@ function createWindow() {
     autoUpdater.logger = console;
 
     autoUpdater.on('checking-for-update', () => {
+        updateCheckState = 'checking';
+        updateCheckInfo  = null;
         mainWindow?.webContents.send('update-message', 'Checking for updates...');
     });
     autoUpdater.on('update-available', (info) => {
+        updateCheckState = 'available';
+        updateCheckInfo  = info;
         mainWindow?.webContents.send('update-available', info);
     });
     autoUpdater.on('update-not-available', () => {
+        updateCheckState = 'not-available';
+        updateCheckInfo  = null;
         mainWindow?.webContents.send('update-not-available');
     });
     autoUpdater.on('error', (err) => {
+        updateCheckState = 'error';
+        updateCheckInfo  = null;
         mainWindow?.webContents.send('update-error', err.message);
     });
     autoUpdater.on('download-progress', (progressObj) => {
@@ -451,6 +465,8 @@ ipcMain.handle('remove-all-mods-and-melon', (_e, installDir) => {
 
 ipcMain.handle('get-app-version', () => app.getVersion());
 
+ipcMain.handle('is-portable', () => !!process.env.PORTABLE_EXECUTABLE_FILE);
+
 ipcMain.handle('export-presets', async () => {
     const settings = loadSettings();
     const presets = settings.presets || {};
@@ -506,3 +522,4 @@ ipcMain.on('window-close', () => mainWindow?.close());
 ipcMain.handle('check-for-updates', () => autoUpdater.checkForUpdatesAndNotify());
 ipcMain.handle('download-update', () => autoUpdater.downloadUpdate());
 ipcMain.handle('quit-and-install', () => autoUpdater.quitAndInstall());
+ipcMain.handle('get-update-state', () => ({ state: updateCheckState, info: updateCheckInfo }));

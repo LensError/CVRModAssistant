@@ -282,6 +282,19 @@ button {
     font-weight: 500;
 }
 
+.nav-dot {
+    position: absolute;
+    top: 8px;
+    right: 32px;
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 6px var(--accent-glow);
+    pointer-events: none;
+    z-index: 10;
+}
+
 /* ── Intro Screen ───────────────────────────────────────────────────────────── */
 .intro-card {
     max-width: 680px;
@@ -1526,4 +1539,18 @@ button {
     background: var(--accent);
     box-shadow: 0 0 10px var(--accent-glow);
     transition: width 0.2s ease;
+}
+
+.about-terms-container {
+    background: var(--bg-3);
+    border: 1px solid var(--border);
+    padding: 18px;
+    margin-top: 10px;
+}
+
+.about-terms-container .intro-terms-box {
+    background: transparent;
+    border: none;
+    padding: 0;
+    max-height: none;
 }

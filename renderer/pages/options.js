@@ -1,6 +1,11 @@
 window.OptionsPage = (() => {
     async function render(installDir, storeType) {
         const content = document.getElementById('page-content');
+        
+        // Clear the notification dot when we enter Options
+        const dot = document.getElementById('update-dot');
+        if (dot) dot.style.display = 'none';
+
         content.innerHTML = `
             <div class="options-page fade-in">
                 <div class="options-grid">
@@ -148,7 +153,7 @@ window.OptionsPage = (() => {
                         <div class="card-body">
                             <div class="update-status-box">
                                 <span id="opt-version-text" class="version-tag">v0.0.0</span>
-                                <span id="update-info-text" class="update-info">Checking for updates...</span>
+                                <span id="update-info-text" class="update-info">Up to date or check for latest</span>
                                 <div class="update-progress-container" id="update-progress-wrap" style="display:none">
                                     <div class="update-progress-bar" id="update-progress-bar" style="width: 0%"></div>
                                 </div>
@@ -159,6 +164,7 @@ window.OptionsPage = (() => {
                             <button class="btn-ghost" id="opt-check-update">Check Now</button>
                             <button class="btn-primary" id="opt-download-update" style="display:none">Download Update</button>
                             <button class="btn-primary" id="opt-install-update" style="display:none">Restart &amp; Install</button>
+                            <button class="btn-primary" id="opt-open-releases" style="display:none">Get Update ↗</button>
                         </div>
                     </div>
 
@@ -349,8 +355,14 @@ window.OptionsPage = (() => {
         const progressWrap = document.getElementById('update-progress-wrap');
         const progressBar = document.getElementById('update-progress-bar');
 
+        // Clean up old listeners to prevent memory leaks and double-triggers
+        window.cvrma.offUpdateEvents();
+
         const version = await window.cvrma.getAppVersion();
         if (versionText) versionText.textContent = `v${version}`;
+
+        const isPortable = await window.cvrma.isPortable();
+        const openReleasesBtn = document.getElementById('opt-open-releases');
 
         if (checkBtn) {
             checkBtn.addEventListener('click', () => {
@@ -374,15 +386,33 @@ window.OptionsPage = (() => {
             });
         }
 
+        if (openReleasesBtn) {
+            openReleasesBtn.addEventListener('click', () => {
+                window.cvrma.openDir('https://github.com/LensError/CVRModAssistant/releases/latest');
+            });
+        }
+
+        // Handle generic status messages from the updater
+        window.cvrma.onUpdateMessage?.((msg) => {
+            if (updateInfo) updateInfo.textContent = msg;
+        });
+
         window.cvrma.onUpdateAvailable((info) => {
             updateInfo.textContent = `New version available: v${info.version}`;
-            downloadBtn.style.display = 'inline-flex';
             checkBtn.style.display = 'none';
+            if (isPortable) {
+                openReleasesBtn.style.display = 'inline-flex';
+            } else {
+                downloadBtn.style.display = 'inline-flex';
+            }
         });
 
         window.cvrma.onUpdateNotAvailable(() => {
             updateInfo.textContent = 'Application is up to date';
-            if (checkBtn) checkBtn.disabled = false;
+            if (checkBtn) {
+                checkBtn.disabled = false;
+                checkBtn.style.display = 'inline-flex';
+            }
         });
 
         window.cvrma.onUpdateError((msg) => {
@@ -400,6 +430,30 @@ window.OptionsPage = (() => {
             progressWrap.style.display = 'none';
             installBtn.style.display = 'inline-flex';
         });
+
+        // Populate UI from the startup check result so the user doesn't have
+        // to press "Check Now" just to see the status that was already fetched.
+        const cached = await window.cvrma.getUpdateState();
+        if (cached && cached.state) {
+            if (cached.state === 'available' && cached.info) {
+                updateInfo.textContent = `New version available: v${cached.info.version}`;
+                checkBtn.style.display = 'none';
+                if (isPortable) {
+                    openReleasesBtn.style.display = 'inline-flex';
+                } else {
+                    downloadBtn.style.display = 'inline-flex';
+                }
+            } else if (cached.state === 'not-available') {
+                updateInfo.textContent = 'Application is up to date';
+                if (checkBtn) checkBtn.disabled = false;
+            } else if (cached.state === 'error') {
+                updateInfo.textContent = 'Update check failed.';
+                if (checkBtn) checkBtn.disabled = false;
+            } else if (cached.state === 'checking') {
+                updateInfo.textContent = 'Checking for updates…';
+                if (checkBtn) checkBtn.disabled = true;
+            }
+        }
     }
 
     function setStatus(text, type = '') {

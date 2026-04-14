@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld('cvrma', {
 
     // App info
     getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+    isPortable: () => ipcRenderer.invoke('is-portable'),
 
     // Window controls
     minimize: () => ipcRenderer.send('window-minimize'),
@@ -43,6 +44,7 @@ contextBridge.exposeInMainWorld('cvrma', {
     offStatusUpdate: () => ipcRenderer.removeAllListeners('status-update'),
 
     // Updates
+    getUpdateState: () => ipcRenderer.invoke('get-update-state'),
     checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
     downloadUpdate: () => ipcRenderer.invoke('download-update'),
     quitAndInstall: () => ipcRenderer.invoke('quit-and-install'),
@@ -51,4 +53,13 @@ contextBridge.exposeInMainWorld('cvrma', {
     onUpdateError: (cb) => ipcRenderer.on('update-error', (_e, msg) => cb(msg)),
     onUpdateDownloadProgress: (cb) => ipcRenderer.on('update-download-progress', (_e, p) => cb(p)),
     onUpdateDownloaded: (cb) => ipcRenderer.on('update-downloaded', () => cb()),
+    onUpdateMessage: (cb) => ipcRenderer.on('update-message', (_e, msg) => cb(msg)),
+    offUpdateEvents: () => {
+        ipcRenderer.removeAllListeners('update-available');
+        ipcRenderer.removeAllListeners('update-not-available');
+        ipcRenderer.removeAllListeners('update-error');
+        ipcRenderer.removeAllListeners('update-download-progress');
+        ipcRenderer.removeAllListeners('update-downloaded');
+        ipcRenderer.removeAllListeners('update-message');
+    }
 });

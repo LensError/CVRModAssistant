@@ -11,6 +11,8 @@ A modern, fast, and beautiful mod manager for [ChilloutVR](https://store.steampo
 - **Clean and Intuitive Interface**: Designed for ease of use with a focus on readability and smooth navigation.
 - **Mod Management**: Browse, install, update, and remove mods from the CVRmg community with ease.
 - **Sync Support**: One-click synchronization to keep your local mods up to date.
+- **In-App Updates**: Checks for updates on startup and lets you download and apply them without leaving the app (installer build).
+- **Multi-Target Distribution**: Choose between a professional installer or a clean, portable executable.
 
 ## Presets
 
@@ -21,7 +23,12 @@ Manage different mod configurations effortlessly with the new Presets feature. C
 
 ## Installation
 
-Download the latest `CVRModAssistant.exe` from [Releases](https://github.com/LensError/CVRModAssistant/releases) and run it. No installation required.
+Download the latest version from [Releases](https://github.com/LensError/CVRModAssistant/releases).
+
+*   **Installer (`CVRModAssistant_Setup.exe`)**: Recommended for most users. Includes Desktop/Start Menu shortcuts, faster boot times, and in-app update support.
+*   **Portable (`CVRModAssistant.exe`)**: No installation required. Just run it from wherever you like. Updates must be applied manually — the app will notify you and link to the latest release.
+
+Once running, updates are checked on startup and the result is shown automatically in the **Options** page.
 
 ## Building from source
 

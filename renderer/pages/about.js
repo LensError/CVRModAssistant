@@ -93,6 +93,13 @@ window.AboutPage = (() => {
                         </a>
                     </div>
                 </div>
+
+                <div>
+                    <div class="about-section-title">Legal &amp; Disclaimer</div>
+                    <div class="about-terms-container">
+                        ${window.SharedData.TERMS_HTML}
+                    </div>
+                </div>
             </div>
         `;
 

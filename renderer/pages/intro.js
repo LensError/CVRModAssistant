@@ -1,28 +1,7 @@
 window.IntroPage = (() => {
-    const TERMS_HTML = `
-        <div class="intro-terms-box" id="intro-terms-scroll">
-            <p>
-                        <strong style="color: var(--text)">CVR Mod Assistant</strong> is a community-made mod manager
-                for ChilloutVR. It is not affiliated with, endorsed by, or supported by
-                ChilloutVR Team.
-            </p>
-            <p>By using mods you agree to the following:</p>
-            <ul>
-                <li>Modding may violate ChilloutVR's Terms of Service. You do so at your own risk.</li>
-                <li>Mods can break after game updates. This tool automatically handles broken/retired mods, but some instability may occur.</li>
-                <li>Do <strong style="color: var(--text)">not</strong> report bugs to the ChilloutVR Team that occur when mods are installed. Remove all mods before filing bug reports.</li>
-                <li>The developers of CVR Mod Assistant are not responsible for any data loss, account actions, or other consequences of using this software.</li>
-                <li>Mods listed here come from the CVRMG (ChilloutVR Modding Group). Use mods from unknown sources at your own risk.</li>
-            </ul>
-            <p>
-                By clicking <em style="color: var(--text)">I Agree</em>, you acknowledge that you have read,
-                understood, and accepted these terms.
-            </p>
-        </div>
-    `;
-
     function render() {
         const container = document.getElementById('page-content');
+        const TERMS_HTML = window.SharedData.TERMS_HTML;
         container.innerHTML = `
             <div id="intro-screen">
                 <div class="intro-card fade-in">
@@ -39,6 +18,11 @@ window.IntroPage = (() => {
                     <div class="intro-section-title">Terms &amp; Conditions</div>
 
                     ${TERMS_HTML}
+                    
+                    <p style="font-size: 11px; color: var(--text-2); margin-top: -8px; margin-bottom: 20px;">
+                        By clicking <em style="color: var(--text)">I Agree</em>, you acknowledge that you have read,
+                        understood, and accepted these terms.
+                    </p>
 
                     <div class="intro-checkbox-row">
                         <input type="checkbox" class="custom-checkbox" id="intro-agree-check" />
@@ -78,7 +62,11 @@ window.IntroPage = (() => {
             if (!check.checked) return;
             agreeBtn.disabled = true;
             agreeBtn.innerHTML = `<span class="spinner" style="width:14px;height:14px;"></span> Saving…`;
-            await window.cvrma.saveSettings({ termsAccepted: true, termsAcceptedAt: new Date().toISOString() });
+            await window.cvrma.saveSettings({ 
+                termsAccepted: true, 
+                termsAcceptedAt: new Date().toISOString(),
+                termsAcceptedVersion: window.SharedData.TERMS_VERSION
+            });
             // Fade out intro, show app shell
             const card = document.querySelector('.intro-card');
             card.style.transition = 'opacity 0.25s ease-out, transform 0.25s ease-out';
