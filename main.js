@@ -6,6 +6,7 @@ const fs = require('fs');
 const https = require('https');
 const http = require('http');
 const AdmZip = require('adm-zip');
+const { execFileSync } = require('child_process');
 const { parseMelonInfo } = require('./dll-parser');
 
 // ─── Settings ────────────────────────────────────────────────────────────────
@@ -405,9 +406,21 @@ ipcMain.handle('scan-installed-mods', (_e, installDir) => {
     return scanInstalledMods(installDir);
 });
 
-ipcMain.handle('melon-loader-status', (_e, installDir) => ({
-    installed: isMelonLoaderInstalled(installDir)
-}));
+ipcMain.handle('melon-loader-status', (_e, installDir) => {
+    const installed = isMelonLoaderInstalled(installDir);
+    let version = null;
+    if (installed) {
+        try {
+            const vDll = path.join(installDir, 'version.dll');
+            const raw = execFileSync('powershell', [
+                '-NoProfile', '-NonInteractive', '-Command',
+                `(Get-Item '${vDll}').VersionInfo.ProductVersion`
+            ], { encoding: 'utf8', timeout: 5000 }).trim();
+            version = raw ? raw.split('+')[0] : null;
+        } catch { /* leave version null */ }
+    }
+    return { installed, version };
+});
 
 ipcMain.handle('install-melon-loader', async (_e, installDir) => {
     try {

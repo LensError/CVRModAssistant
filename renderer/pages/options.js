@@ -202,7 +202,9 @@ window.OptionsPage = (() => {
                 if (dot && text) {
                     if (r.installed) {
                         dot.classList.add('installed');
-                        text.textContent = 'Installed and detected';
+                        text.textContent = r.version
+                            ? `Installed and detected — v${r.version}`
+                            : 'Installed and detected';
                         text.style.color = 'var(--online)';
                     } else {
                         text.textContent = 'Not installed';
