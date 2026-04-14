@@ -417,9 +417,8 @@ window.OptionsPage = (() => {
             }
         });
 
-        window.cvrma.onUpdateError((msg) => {
+        window.cvrma.onUpdateError((_msg) => {
             updateInfo.textContent = `Update check failed.`;
-            console.error('Update error:', msg);
             if (checkBtn) checkBtn.disabled = false;
         });
 

@@ -412,9 +412,10 @@ ipcMain.handle('melon-loader-status', (_e, installDir) => {
     if (installed) {
         try {
             const vDll = path.join(installDir, 'version.dll');
+            const escapedPath = vDll.replace(/'/g, "''"); // escape single quotes for PowerShell
             const raw = execFileSync('powershell', [
                 '-NoProfile', '-NonInteractive', '-Command',
-                `(Get-Item '${vDll}').VersionInfo.ProductVersion`
+                `(Get-Item '${escapedPath}').VersionInfo.ProductVersion`
             ], { encoding: 'utf8', timeout: 5000 }).trim();
             version = raw ? raw.split('+')[0] : null;
         } catch { /* leave version null */ }

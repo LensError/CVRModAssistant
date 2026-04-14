@@ -1,5 +1,5 @@
 window.SharedData = {
-    TERMS_VERSION: 1,
+    TERMS_VERSION: 2,
     TERMS_HTML: `
         <div class="intro-terms-box" id="intro-terms-scroll">
             <p>
