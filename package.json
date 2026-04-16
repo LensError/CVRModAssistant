@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node_modules\\electron\\dist\\electron.exe .",
     "dev": "node_modules\\electron\\dist\\electron.exe . --inspect",
-    "build": "node node_modules/electron-builder/cli.js --win"
+    "build": "node node_modules/electron-builder/cli.js --win",
+    "build:linux": "node node_modules/electron-builder/cli.js --linux"
   },
   "build": {
     "appId": "com.lenserror.cvr-mod-assistant",
@@ -39,6 +40,13 @@
     },
     "portable": {
       "artifactName": "CVRModAssistant.${ext}"
+    },
+    "linux": {
+      "target": [
+        "pacman",
+        "zip"
+      ],
+      "artifactName": "CVRModAssistant_Linux.${ext}"
     },
     "publish": {
       "provider": "github",
