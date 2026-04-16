@@ -102,15 +102,56 @@ function findOculusInstallDir() {
     }
 }
 
+function findSteamLinuxInstallDir() {
+    const os = require('os');
+    const home = os.homedir();
+    const steamRoots = [
+        path.join(home, '.local', 'share', 'Steam'),
+        path.join(home, '.steam', 'steam'),
+        path.join(home, '.steam', 'root'),
+    ];
+
+    for (const steamPath of steamRoots) {
+        const vdf = path.join(steamPath, 'steamapps', 'libraryfolders.vdf');
+        if (!fs.existsSync(vdf)) continue;
+
+        const content = fs.readFileSync(vdf, 'utf-8');
+        const pathMatches = [...content.matchAll(/"path"\s+"([^"]+)"/g)];
+        const libraryPaths = [
+            path.join(steamPath, 'steamapps'),
+            ...pathMatches.map(m => path.join(m[1], 'steamapps'))
+        ];
+
+        for (const lib of libraryPaths) {
+            const acf = path.join(lib, 'appmanifest_661130.acf');
+            if (!fs.existsSync(acf)) continue;
+            const acfContent = fs.readFileSync(acf, 'utf-8');
+            const match = acfContent.match(/\s"installdir"\s+"(.+)"/);
+            if (match) {
+                const gameDir = path.join(lib, 'common', match[1]);
+                if (fs.existsSync(path.join(gameDir, 'ChilloutVR.exe'))) {
+                    return { dir: gameDir, store: 'Steam' };
+                }
+            }
+        }
+    }
+    return null;
+}
+
 async function detectInstallDir() {
     const settings = loadSettings();
     if (settings.installFolder && fs.existsSync(path.join(settings.installFolder, 'ChilloutVR.exe'))) {
         return { dir: settings.installFolder, store: settings.storeType || 'Unknown' };
     }
-    const steam = await findSteamInstallDir();
-    if (steam) return steam;
-    const oculus = await findOculusInstallDir();
-    if (oculus) return oculus;
+    if (process.platform === 'linux') {
+        const steam = findSteamLinuxInstallDir();
+        if (steam) return steam;
+    } else {
+        const steam = await findSteamInstallDir();
+        if (steam) return steam;
+        const oculus = await findOculusInstallDir();
+        if (oculus) return oculus;
+    }
     return null;
 }
 
