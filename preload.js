@@ -38,6 +38,8 @@ contextBridge.exposeInMainWorld('cvrma', {
     // App info
     getAppVersion: () => ipcRenderer.invoke('get-app-version'),
     isPortable: () => ipcRenderer.invoke('is-portable'),
+    getUpdateMode: () => ipcRenderer.invoke('get-update-mode'),
+    platform: process.platform,
 
     // Window controls
     minimize: () => ipcRenderer.send('window-minimize'),

@@ -60,6 +60,12 @@ window.OptionsPage = (() => {
                                 <span class="ml-status-text" id="ml-status-text">Checking status…</span>
                             </div>
                             <span class="settings-desc">MelonLoader is required to run any mods in ChilloutVR.</span>
+                            ${window.cvrma.platform === 'linux' ? `
+                            <div class="info-notice" style="margin-top:10px;">
+                                <strong>Proton (Linux)</strong><br>
+                                On Steam, add to launch options:<br>
+                                <code>WINEDLLOVERRIDES="version=n,b" %command%</code>
+                            </div>` : ''}
                         </div>
                         <div class="card-footer">
                             <button class="btn-ghost" id="opt-install-ml" ${!installDir ? 'disabled' : ''}>Install / Update</button>
@@ -421,7 +427,7 @@ window.OptionsPage = (() => {
         const version = await window.cvrma.getAppVersion();
         if (versionText) versionText.textContent = `v${version}`;
 
-        const isPortable = await window.cvrma.isPortable();
+        const updateMode = await window.cvrma.getUpdateMode();
         const openReleasesBtn = document.getElementById('opt-open-releases');
 
         if (checkBtn) {
@@ -458,11 +464,13 @@ window.OptionsPage = (() => {
         });
 
         window.cvrma.onUpdateAvailable((info) => {
-            updateInfo.textContent = `New version available: v${info.version}`;
-            checkBtn.style.display = 'none';
-            if (isPortable) {
+            if (updateMode === 'link') {
+                updateInfo.textContent = `v${info.version} available — download from GitHub releases`;
+                checkBtn.style.display = 'none';
                 openReleasesBtn.style.display = 'inline-flex';
             } else {
+                updateInfo.textContent = `New version available: v${info.version}`;
+                checkBtn.style.display = 'none';
                 downloadBtn.style.display = 'inline-flex';
             }
         });
@@ -495,11 +503,13 @@ window.OptionsPage = (() => {
         const cached = await window.cvrma.getUpdateState();
         if (cached && cached.state) {
             if (cached.state === 'available' && cached.info) {
-                updateInfo.textContent = `New version available: v${cached.info.version}`;
-                checkBtn.style.display = 'none';
-                if (isPortable) {
+                if (updateMode === 'link') {
+                    updateInfo.textContent = `v${cached.info.version} available — download from GitHub releases`;
+                    checkBtn.style.display = 'none';
                     openReleasesBtn.style.display = 'inline-flex';
                 } else {
+                    updateInfo.textContent = `New version available: v${cached.info.version}`;
+                    checkBtn.style.display = 'none';
                     downloadBtn.style.display = 'inline-flex';
                 }
             } else if (cached.state === 'not-available') {

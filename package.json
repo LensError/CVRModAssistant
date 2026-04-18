@@ -5,7 +5,9 @@
   "main": "main.js",
   "scripts": {
     "start": "node_modules\\electron\\dist\\electron.exe .",
+    "start:linux": "node_modules/.bin/electron .",
     "dev": "node_modules\\electron\\dist\\electron.exe . --inspect",
+    "dev:linux": "node_modules/.bin/electron . --inspect",
     "build": "node node_modules/electron-builder/cli.js --win",
     "build:linux": "node node_modules/electron-builder/cli.js --linux"
   },
@@ -43,9 +45,11 @@
     },
     "linux": {
       "icon": "renderer/assets/icons/icon.png",
+      "category": "Game",
       "target": [
-        "pacman",
-        "zip"
+        "AppImage",
+        "deb",
+        "pacman"
       ],
       "artifactName": "CVRModAssistant_Linux.${ext}"
     },

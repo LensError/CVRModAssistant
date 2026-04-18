@@ -343,6 +343,51 @@ function removeAllModsAndMelon(installDir) {
     return count;
 }
 
+// ─── Update mode ─────────────────────────────────────────────────────────────
+// 'auto'  — electron-updater handles download + install (NSIS on Windows, AppImage on Linux)
+// 'link'  — can only check; user downloads manually (Windows portable, deb, pacman)
+function getUpdateMode() {
+    if (process.env.PORTABLE_EXECUTABLE_FILE) return 'link';
+    if (process.platform === 'linux' && !process.env.APPIMAGE) return 'link';
+    return 'auto';
+}
+
+function compareVersions(a, b) {
+    const pa = a.split('.').map(Number);
+    const pb = b.split('.').map(Number);
+    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+        const diff = (pa[i] || 0) - (pb[i] || 0);
+        if (diff !== 0) return diff;
+    }
+    return 0;
+}
+
+async function checkGithubRelease(win) {
+    updateCheckState = 'checking';
+    updateCheckInfo  = null;
+    win?.webContents.send('update-message', 'Checking for updates...');
+    try {
+        const { buffer } = await downloadToBuffer('https://api.github.com/repos/LensError/CVRModAssistant/releases/latest');
+        const release = JSON.parse(buffer.toString('utf-8'));
+        const latestVersion = release.tag_name?.replace(/^v/, '');
+        if (!latestVersion) throw new Error('Could not parse release version');
+        const isNewer = compareVersions(latestVersion, app.getVersion()) > 0;
+        if (isNewer) {
+            updateCheckState = 'available';
+            updateCheckInfo  = { version: latestVersion };
+            win?.webContents.send('update-available', { version: latestVersion });
+        } else {
+            updateCheckState = 'not-available';
+            updateCheckInfo  = null;
+            win?.webContents.send('update-not-available');
+        }
+    } catch (e) {
+        updateCheckState = 'error';
+        updateCheckInfo  = null;
+        win?.webContents.send('update-error', e.message);
+    }
+}
+
 // ─── Update state ─────────────────────────────────────────────────────────────
 // Cached so the Options page can read it when it renders (the events already
 // fired during the startup check by the time the user navigates there).
@@ -371,38 +416,42 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 
     // --- Auto Updater ---
-    autoUpdater.autoDownload = false;
-    autoUpdater.logger = console;
+    if (getUpdateMode() === 'auto') {
+        autoUpdater.autoDownload = false;
+        autoUpdater.logger = console;
 
-    autoUpdater.on('checking-for-update', () => {
-        updateCheckState = 'checking';
-        updateCheckInfo  = null;
-        mainWindow?.webContents.send('update-message', 'Checking for updates...');
-    });
-    autoUpdater.on('update-available', (info) => {
-        updateCheckState = 'available';
-        updateCheckInfo  = info;
-        mainWindow?.webContents.send('update-available', info);
-    });
-    autoUpdater.on('update-not-available', () => {
-        updateCheckState = 'not-available';
-        updateCheckInfo  = null;
-        mainWindow?.webContents.send('update-not-available');
-    });
-    autoUpdater.on('error', (err) => {
-        updateCheckState = 'error';
-        updateCheckInfo  = null;
-        mainWindow?.webContents.send('update-error', err.message);
-    });
-    autoUpdater.on('download-progress', (progressObj) => {
-        mainWindow?.webContents.send('update-download-progress', progressObj.percent);
-    });
-    autoUpdater.on('update-downloaded', () => {
-        mainWindow?.webContents.send('update-downloaded');
-    });
+        autoUpdater.on('checking-for-update', () => {
+            updateCheckState = 'checking';
+            updateCheckInfo  = null;
+            mainWindow?.webContents.send('update-message', 'Checking for updates...');
+        });
+        autoUpdater.on('update-available', (info) => {
+            updateCheckState = 'available';
+            updateCheckInfo  = info;
+            mainWindow?.webContents.send('update-available', info);
+        });
+        autoUpdater.on('update-not-available', () => {
+            updateCheckState = 'not-available';
+            updateCheckInfo  = null;
+            mainWindow?.webContents.send('update-not-available');
+        });
+        autoUpdater.on('error', (err) => {
+            updateCheckState = 'error';
+            updateCheckInfo  = null;
+            mainWindow?.webContents.send('update-error', err.message);
+        });
+        autoUpdater.on('download-progress', (progressObj) => {
+            mainWindow?.webContents.send('update-download-progress', progressObj.percent);
+        });
+        autoUpdater.on('update-downloaded', () => {
+            mainWindow?.webContents.send('update-downloaded');
+        });
 
-    // Check for updates on startup
-    autoUpdater.checkForUpdatesAndNotify();
+        autoUpdater.checkForUpdatesAndNotify();
+    } else {
+        // deb / pacman / portable — check GitHub releases API on startup
+        mainWindow.webContents.once('did-finish-load', () => checkGithubRelease(mainWindow));
+    }
 }
 
 app.whenReady().then(createWindow);
@@ -534,6 +583,7 @@ ipcMain.handle('remove-all-mods-and-melon', (_e, installDir) => {
 ipcMain.handle('get-app-version', () => app.getVersion());
 
 ipcMain.handle('is-portable', () => !!process.env.PORTABLE_EXECUTABLE_FILE);
+ipcMain.handle('get-update-mode', () => getUpdateMode());
 
 ipcMain.handle('export-presets', async () => {
     const settings = loadSettings();
@@ -584,7 +634,10 @@ ipcMain.on('window-maximize', () => {
 ipcMain.on('window-close', () => mainWindow?.close());
 
 // Update Handlers
-ipcMain.handle('check-for-updates', () => autoUpdater.checkForUpdatesAndNotify());
+ipcMain.handle('check-for-updates', () => {
+    if (getUpdateMode() === 'auto') return autoUpdater.checkForUpdatesAndNotify();
+    return checkGithubRelease(mainWindow);
+});
 ipcMain.handle('download-update', () => autoUpdater.downloadUpdate());
 ipcMain.handle('quit-and-install', () => autoUpdater.quitAndInstall());
 ipcMain.handle('get-update-state', () => ({ state: updateCheckState, info: updateCheckInfo }));
