@@ -12,7 +12,7 @@ A modern, fast, and beautiful mod manager for [ChilloutVR](https://store.steampo
 - **Mod Management**: Browse, install, update, and remove mods from the CVRmg community.
 - **Sync Support**: One-click synchronization to keep your local mods up to date.
 - **In-App Updates**: Checks for updates on startup and lets you download and apply them without leaving the app (NSIS installer and AppImage builds).
-- **Linux / Proton Support**: Detects your Steam library on Linux and includes a first-launch guide for the required Proton launch option.
+- **Linux / Proton Support**: Detects your ChilloutVR game folder on Linux and includes a first-launch setup guide for MelonLoader under Proton.
 
 ## Presets
 
