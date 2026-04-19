@@ -44,7 +44,7 @@
       "artifactName": "CVRModAssistant.${ext}"
     },
     "linux": {
-      "icon": "renderer/assets/icons/icon.png",
+      "icon": "build/icons",
       "category": "Game",
       "target": [
         "AppImage",
