@@ -64,7 +64,10 @@ window.OptionsPage = (() => {
                             <div class="info-notice" style="margin-top:10px;">
                                 <strong>Proton (Linux)</strong><br>
                                 On Steam, add to launch options:<br>
-                                <code>WINEDLLOVERRIDES="version=n,b" %command%</code>
+                                <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+                                    <code>WINEDLLOVERRIDES="version=n,b" %command%</code>
+                                    <button class="btn-ghost" id="copy-proton-cmd" style="padding:2px 8px;font-size:0.75rem;">Copy</button>
+                                </div>
                             </div>` : ''}
                         </div>
                         <div class="card-footer">
@@ -221,7 +224,16 @@ window.OptionsPage = (() => {
         }
 
         // --- Event Listeners ---
-        
+
+        const copyProtonBtn = document.getElementById('copy-proton-cmd');
+        if (copyProtonBtn) {
+            copyProtonBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText('WINEDLLOVERRIDES="version=n,b" %command%');
+                copyProtonBtn.textContent = 'Copied!';
+                setTimeout(() => { copyProtonBtn.textContent = 'Copy'; }, 2000);
+            });
+        }
+
         document.getElementById('opt-select-dir').addEventListener('click', async () => {
             const result = await window.cvrma.selectDir();
             if (!result) return;

@@ -1,5 +1,6 @@
 window.SharedData = {
     TERMS_VERSION: 2,
+    PROTON_GUIDE_VERSION: 1,
     TERMS_HTML: `
         <div class="intro-terms-box" id="intro-terms-scroll">
             <p>

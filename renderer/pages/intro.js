@@ -72,7 +72,7 @@ window.IntroPage = (() => {
             card.style.transition = 'opacity 0.25s ease-out, transform 0.25s ease-out';
             card.style.opacity = '0';
             card.style.transform = 'translateY(-8px)';
-            setTimeout(() => window.App.enterApp(), 280);
+            setTimeout(() => window.App.afterIntro(), 280);
         });
 
         disagreeBtn.addEventListener('click', () => {

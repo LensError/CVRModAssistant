@@ -34,8 +34,13 @@ window.App = (() => {
         });
 
         const termsVer = appState.settings.termsAcceptedVersion || 0;
+        const protonSeen = appState.settings.protonGuideSeen || 0;
+        const needProton = window.cvrma.platform === 'linux' && protonSeen < window.SharedData.PROTON_GUIDE_VERSION;
+
         if (!appState.settings.termsAccepted || termsVer < window.SharedData.TERMS_VERSION) {
             showIntro();
+        } else if (needProton) {
+            showProtonGuide();
         } else {
             enterApp();
         }
@@ -45,6 +50,81 @@ window.App = (() => {
     function showIntro() {
         hideShell();
         window.IntroPage.render();
+    }
+
+    function afterIntro() {
+        const protonSeen = appState.settings.protonGuideSeen || 0;
+        if (window.cvrma.platform === 'linux' && protonSeen < window.SharedData.PROTON_GUIDE_VERSION) {
+            showProtonGuide();
+        } else {
+            enterApp();
+        }
+    }
+
+    function showProtonGuide() {
+        hideShell();
+        const container = document.getElementById('page-content');
+        const CMD = 'WINEDLLOVERRIDES="version=n,b" %command%';
+        container.innerHTML = `
+            <div id="intro-screen">
+                <div class="intro-card fade-in">
+                    <div class="intro-logo-row">
+                        <div class="intro-logo-icon">
+                            <img src="assets/icons/icon.svg" width="48" height="48" alt="CVR Mod Assistant Logo">
+                        </div>
+                        <div>
+                            <div class="intro-title">One more thing</div>
+                            <div class="intro-subtitle mono">Proton (Linux) setup</div>
+                        </div>
+                    </div>
+
+                    <div class="intro-section-title">Steam Launch Options</div>
+
+                    <div class="intro-terms-box" style="padding: 16px 18px;">
+                        <p style="margin:0 0 12px;">
+                            MelonLoader requires a DLL override to work under Proton.<br>
+                            You need to add the following to ChilloutVR's <strong style="color:var(--text)">Steam launch options</strong>.
+                        </p>
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+                            <code style="flex:1;">${escHtml(CMD)}</code>
+                            <button class="btn-ghost" id="proton-guide-copy" style="padding:2px 10px;font-size:0.75rem;white-space:nowrap;">Copy</button>
+                        </div>
+                        <ol style="margin:0;padding-left:1.3em;color:var(--text-2);line-height:1.8;">
+                            <li>Open <strong style="color:var(--text)">Steam</strong> and go to your Library.</li>
+                            <li>Right-click <strong style="color:var(--text)">ChilloutVR</strong> → <em style="color:var(--text)">Properties…</em></li>
+                            <li>In the <strong style="color:var(--text)">General</strong> tab, find <em style="color:var(--text)">Launch Options</em>.</li>
+                            <li>Paste the command above into the field and close.</li>
+                        </ol>
+                    </div>
+
+                    <div class="intro-actions">
+                        <button class="intro-btn-agree" id="proton-guide-ok">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            Got it, continue
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const copyBtn = document.getElementById('proton-guide-copy');
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(CMD);
+            copyBtn.textContent = 'Copied!';
+            setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+        });
+
+        document.getElementById('proton-guide-ok').addEventListener('click', async () => {
+            await window.cvrma.saveSettings({ protonGuideSeen: window.SharedData.PROTON_GUIDE_VERSION });
+            appState.settings.protonGuideSeen = window.SharedData.PROTON_GUIDE_VERSION;
+            const card = document.querySelector('.intro-card');
+            card.style.transition = 'opacity 0.25s ease-out, transform 0.25s ease-out';
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(-8px)';
+            setTimeout(() => enterApp(), 280);
+        });
     }
 
     async function enterApp() {
@@ -265,6 +345,7 @@ window.App = (() => {
 
     return {
         enterApp,
+        afterIntro,
         navigateTo,
         setInstallDir,
         confirm: showConfirm,
