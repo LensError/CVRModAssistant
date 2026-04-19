@@ -37,7 +37,7 @@ window.OptionsPage = (() => {
                         </div>
                         <div class="card-footer">
                             <button class="btn-ghost" id="opt-select-dir">Change Folder</button>
-                            <button class="btn-ghost" id="opt-open-dir" ${!installDir ? 'disabled' : ''}>Show in Explorer</button>
+                            <button class="btn-ghost" id="opt-open-dir" ${!installDir ? 'disabled' : ''}>Show Folder</button>
                         </div>
                     </div>
 
@@ -137,7 +137,7 @@ window.OptionsPage = (() => {
                             </div>
                         </div>
                         <div class="card-body">
-                            <span class="settings-desc">Open commonly used folders in Explorer.</span>
+                            <span class="settings-desc">Open commonly used folders.</span>
                         </div>
                         <div class="card-footer">
                             <button class="btn-ghost" id="opt-open-game-dir" ${!installDir ? 'disabled' : ''}>Game Folder</button>

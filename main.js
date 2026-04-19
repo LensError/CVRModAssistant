@@ -500,6 +500,32 @@ ipcMain.handle('open-external', (_e, url) => {
 ipcMain.handle('open-app-data', () => shell.openPath(app.getPath('userData')));
 
 ipcMain.handle('open-game-app-data', () => {
+    if (process.platform === 'linux') {
+        const os = require('os');
+        const home = os.homedir();
+        const steamRoots = [
+            path.join(home, '.local', 'share', 'Steam'),
+            path.join(home, '.steam', 'steam'),
+            path.join(home, '.steam', 'root'),
+        ];
+        const subpath = path.join('steamapps', 'compatdata', '661130', 'pfx', 'drive_c',
+            'users', 'steamuser', 'AppData', 'LocalLow', 'ChilloutVR', 'ChilloutVR');
+        for (const root of steamRoots) {
+            const candidate = path.join(root, subpath);
+            if (fs.existsSync(candidate)) return shell.openPath(candidate);
+        }
+        // Also try library paths from VDF if CVR is in a non-default library
+        for (const steamRoot of steamRoots) {
+            const vdf = path.join(steamRoot, 'steamapps', 'libraryfolders.vdf');
+            if (!fs.existsSync(vdf)) continue;
+            const content = fs.readFileSync(vdf, 'utf-8');
+            for (const [, libPath] of content.matchAll(/"path"\s+"([^"]+)"/g)) {
+                const candidate = path.join(libPath, subpath);
+                if (fs.existsSync(candidate)) return shell.openPath(candidate);
+            }
+        }
+        return;
+    }
     const cvrAppData = path.join(app.getPath('appData'), '..', 'LocalLow', 'ChilloutVR', 'ChilloutVR');
     return shell.openPath(cvrAppData);
 });
@@ -512,7 +538,7 @@ ipcMain.handle('scan-installed-mods', (_e, installDir) => {
 ipcMain.handle('melon-loader-status', (_e, installDir) => {
     const installed = isMelonLoaderInstalled(installDir);
     let version = null;
-    if (installed) {
+    if (installed && process.platform !== 'linux') {
         try {
             const vDll = path.join(installDir, 'version.dll');
             const escapedPath = vDll.replace(/'/g, "''"); // escape single quotes for PowerShell
