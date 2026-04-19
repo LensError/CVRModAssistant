@@ -1,6 +1,6 @@
 {
   "name": "cvr-mod-assistant",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Mod manager for ChilloutVR",
   "main": "main.js",
   "scripts": {
