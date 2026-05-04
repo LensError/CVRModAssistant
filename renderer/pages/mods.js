@@ -287,7 +287,7 @@ window.ModsPage = (() => {
 
     // ── API ────────────────────────────────────────────────────────────────────
     async function fetchMods() {
-        const res = await fetch(CVRMG_API);
+        const res = await fetch(CVRMG_API, { cache: 'no-store' });
         if (!res.ok) throw new Error(`API ${res.status}`);
         const data = await res.json();
         data.forEach(m => { m.category = m.category || 'Uncategorized'; });
@@ -300,7 +300,7 @@ window.ModsPage = (() => {
 
     async function fetchFlags() {
         try {
-            const res = await fetch(FLAGS_API);
+            const res = await fetch(FLAGS_API, { cache: 'no-store' });
             if (!res.ok) return {};
             const data = await res.json();
             const map = {};
