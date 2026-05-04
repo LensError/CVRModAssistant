@@ -1150,12 +1150,9 @@ button {
 .about-hero-icon {
     width: 52px;
     height: 52px;
-    background: var(--accent-dim);
-    border: 1px solid var(--accent);
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: var(--radius);
 }
 
 .about-app-name {

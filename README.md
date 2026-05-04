@@ -1,7 +1,5 @@
 # CVR Mod Assistant
 
-This project was developed with the assistance of AI, originally as a personal tool created out of a desire for a specialized presets feature. While it started out of boredom and just for fun, I decided to share it on GitHub in case others might also find the mod presets and management features useful.
-
 A modern, fast, and beautiful mod manager for [ChilloutVR](https://store.steampowered.com/app/661130/ChilloutVR/).
 
 ![Main Interface](media/mainimage.png)
@@ -80,6 +78,9 @@ This project was built upon the foundations of [CVRMelonAssistant](https://githu
 
 > [!IMPORTANT]
 > **Disclaimer**: Modding ChilloutVR is [officially allowed](https://docs.chilloutvr.net/official/legal/tos/#6-modding-our-game) per the ChilloutVR Terms of Service. However, **CVR Mod Assistant is not created by or affiliated with ChilloutVR or the ChilloutVR team in any way.** Use this tool at your own risk.
+
+> [!NOTE]
+> This project were written with AI assistance. As with any AI-generated code, bugs may be present. Please report anything unexpected on [GitHub Issues](https://github.com/LensError/CVRModAssistant/issues).
 
 ## License
 

@@ -3,19 +3,19 @@ window.AboutPage = (() => {
         {
             name: 'Nirv-git',
             url: 'https://github.com/Nirv-git',
-            role: 'CVRMelonAssistant — the WPF app this is forked from',
+            role: 'CVRMelonAssistant - the WPF app this is forked from',
             donateUrl: null,
         },
         {
             name: 'Umbranox',
             url: 'https://umbranox.carrd.co/',
-            role: 'Inspiration — created the original Mod Manager',
+            role: 'Inspiration - created the original Mod Manager',
             donateUrl: 'https://www.patreon.com/scoresaber',
         },
         {
             name: 'lolPants',
             url: 'https://www.jackbaron.com/',
-            role: 'Inspiration — created ModSaber, the first Mod repository',
+            role: 'Inspiration - created ModSaber, the first Mod repository',
             donateUrl: 'https://www.paypal.me/jackbarondev',
         },
         {
