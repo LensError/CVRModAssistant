@@ -38,6 +38,27 @@ window.ModsPage = (() => {
         return null;
     }
 
+    // ── Version comparison ───────────────────────────────────────────────────
+    function isNewerVersion(remote, local) {
+        if (!remote || !local) return false;
+        const parse = v => String(v).trim().replace(/^v/i, '').split(/[.-]/).map(p => {
+            const n = Number(p);
+            return Number.isNaN(n) ? p : n;
+        });
+        const ra = parse(remote), la = parse(local);
+        const len = Math.max(ra.length, la.length);
+        for (let i = 0; i < len; i++) {
+            const r = ra[i] ?? 0, l = la[i] ?? 0;
+            if (typeof r === 'number' && typeof l === 'number') {
+                if (r !== l) return r > l;
+            } else {
+                const cmp = String(r).localeCompare(String(l));
+                if (cmp !== 0) return cmp > 0;
+            }
+        }
+        return false;
+    }
+
     // ── Mod list building ──────────────────────────────────────────────────────
     function buildModList(mods) {
         const items = [];
@@ -79,7 +100,7 @@ window.ModsPage = (() => {
                 isSelected:       (ver.approvalStatus === 2 || ver.approvalStatus === 3) ? false : isSelected,
                 installedFile:    installed || null,
                 installedVersion: installed ? (installed.version || null) : null,
-                needsUpdate:      installed ? (installed.version !== ver.modVersion) : false,
+                needsUpdate:      installed ? (!installed.version || isNewerVersion(ver.modVersion, installed.version)) : false,
             });
         }
 
@@ -324,7 +345,7 @@ window.ModsPage = (() => {
     function versionBadge(item) {
         const ver = escHtml(item.version);
         if (!item.installedFile) return `<span class="badge badge-version">${ver}</span>`;
-        if (!item.needsUpdate)   return `<span class="badge badge-installed" title="Up to date">✓&nbsp;${ver}</span>`;
+        if (!item.needsUpdate)   return `<span class="badge badge-installed" title="Up to date">✓&nbsp;${escHtml(item.installedVersion || item.version)}</span>`;
         return `<span class="badge badge-installed" title="Installed">${escHtml(item.installedVersion || '?')}</span>
                 <span class="badge badge-version" title="Latest">→&nbsp;${ver}</span>`;
     }
@@ -478,7 +499,7 @@ window.ModsPage = (() => {
                     <div class="flyout-label">Versions</div>
                     <div class="flyout-version-row">
                         ${item.installedFile && !item.needsUpdate
-                            ? `<span class="badge badge-installed">✓&nbsp;${escHtml(item.version)}</span>`
+                            ? `<span class="badge badge-installed">✓&nbsp;${escHtml(item.installedVersion || item.version)}</span>`
                             : `<span class="badge badge-version">Latest: ${escHtml(item.version)}</span>`
                         }
                         ${item.installedFile && item.needsUpdate
