@@ -5,3 +5,4 @@ out/
 *.log
 CLAUDE.md
 .claude/
+AGENTS.md

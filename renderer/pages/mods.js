@@ -1,5 +1,6 @@
 // Mods Page Module — presets, sync-based install/uninstall, dirty detection
 window.ModsPage = (() => {
+    const { escHtml } = window.SharedData;
     const CVRMG_API = 'https://api.cvrmg.com/v1/mods';
     const FLAGS_API = 'https://gist.githubusercontent.com/Nirv-git/1963e20d855c401349820a93b4d2639b/raw/cvrModFlags.json';
 
@@ -45,6 +46,7 @@ window.ModsPage = (() => {
         const presetMods = (state.presets[state.activePresetName] || []);
 
         for (const mod of mods) {
+            if (!Array.isArray(mod.versions) || mod.versions.length === 0) continue;
             const ver = mod.versions[0];
             const installed = matchInstalledFile(ver.name, mod.aliases);
             if (installed) matchedFilePaths.add(installed.filePath);
@@ -289,7 +291,7 @@ window.ModsPage = (() => {
     async function fetchMods() {
         const res = await fetch(CVRMG_API, { cache: 'no-store' });
         if (!res.ok) throw new Error(`API ${res.status}`);
-        const data = await res.json();
+        const data = (await res.json()).filter(m => Array.isArray(m.versions) && m.versions.length > 0);
         data.forEach(m => { m.category = m.category || 'Uncategorized'; });
         data.sort((a, b) => {
             const cc = a.category.localeCompare(b.category);
@@ -320,10 +322,11 @@ window.ModsPage = (() => {
     }
 
     function versionBadge(item) {
-        if (!item.installedFile) return `<span class="badge badge-version">${item.version}</span>`;
-        if (!item.needsUpdate)   return `<span class="badge badge-installed" title="Up to date">✓&nbsp;${item.version}</span>`;
-        return `<span class="badge badge-installed" title="Installed">${item.installedVersion || '?'}</span>
-                <span class="badge badge-version" title="Latest">→&nbsp;${item.version}</span>`;
+        const ver = escHtml(item.version);
+        if (!item.installedFile) return `<span class="badge badge-version">${ver}</span>`;
+        if (!item.needsUpdate)   return `<span class="badge badge-installed" title="Up to date">✓&nbsp;${ver}</span>`;
+        return `<span class="badge badge-installed" title="Installed">${escHtml(item.installedVersion || '?')}</span>
+                <span class="badge badge-version" title="Latest">→&nbsp;${ver}</span>`;
     }
 
     function statusBadges(item) {
@@ -535,9 +538,18 @@ window.ModsPage = (() => {
         const deleteBtn = document.getElementById('flyout-delete-unmanaged-btn');
         if (deleteBtn && item.isUnmanaged && item.installedFile) {
             deleteBtn.addEventListener('click', async () => {
+                if (await window.cvrma.isGameRunning()) {
+                    await window.App.choice({
+                        title: 'ChilloutVR is Running',
+                        body: 'Close ChilloutVR before deleting mods.',
+                        buttons: [{ label: 'OK', value: true, style: 'btn-primary' }],
+                    });
+                    setStatus('Close ChilloutVR before deleting mods.', 'err');
+                    return;
+                }
                 deleteBtn.disabled = true;
                 deleteBtn.textContent = 'Deleting…';
-                await window.cvrma.uninstallMod(item.installedFile.filePath);
+                await window.cvrma.uninstallMod(item.installedFile.filePath, state.installDir);
                 closeFlyout();
                 try { state.installedFiles = await window.cvrma.scanInstalledMods(state.installDir); }
                 catch { state.installedFiles = []; }
@@ -617,10 +629,35 @@ window.ModsPage = (() => {
             return;
         }
 
+        const gameRunning = await window.cvrma.isGameRunning();
+        const hasUpdates = toInstall.some(m => m.installedFile);
+        if (gameRunning && (toUninstall.length > 0 || hasUpdates)) {
+            await window.App.choice({
+                title: 'ChilloutVR is Running',
+                body: 'Close ChilloutVR before updating or removing mods.',
+                buttons: [{ label: 'OK', value: true, style: 'btn-primary' }],
+            });
+            setStatus('Close ChilloutVR before updating or removing mods.', 'err');
+            if (btn) btn.disabled = false;
+            checkDirty();
+            return;
+        }
+
         if (toInstall.length) {
             setStatus('Checking MelonLoader…', '');
             const ml = await window.cvrma.melonLoaderStatus(state.installDir);
             if (!ml.installed) {
+                if (gameRunning) {
+                    await window.App.choice({
+                        title: 'ChilloutVR is Running',
+                        body: 'Close ChilloutVR before installing MelonLoader.',
+                        buttons: [{ label: 'OK', value: true, style: 'btn-primary' }],
+                    });
+                    setStatus('Close ChilloutVR before installing MelonLoader.', 'err');
+                    if (btn) btn.disabled = false;
+                    checkDirty();
+                    return;
+                }
                 setStatus('Installing MelonLoader…', '');
                 const r = await window.cvrma.installMelonLoader(state.installDir);
                 if (!r.success) {
@@ -631,26 +668,36 @@ window.ModsPage = (() => {
             }
         }
 
-        let done = 0, removed = 0, installed = 0;
+        let done = 0, removed = 0, installed = 0, failed = 0;
 
         for (const item of toUninstall) {
             setStatus(`Removing ${item.name}…`, '');
             setProgress(done / total * 0.95);
-            const r = await window.cvrma.uninstallMod(item.installedFile.filePath);
+            const r = await window.cvrma.uninstallMod(item.installedFile.filePath, state.installDir);
             if (r.success) removed++;
+            else failed++;
             done++;
         }
 
-        for (const item of toInstall) {
-            setStatus(`Installing ${item.name}… (${done + 1}/${total})`, '');
-            setProgress(done / total * 0.95);
-            const r = await window.cvrma.installMod(state.installDir, {
-                downloadLink: item.downloadLink, name: item.name, version: item.version,
-                isPlugin: item.isPlugin, isBroken: item.isBroken, isRetired: item.isRetired,
-            });
-            if (r.success) installed++;
-            done++;
+        const CONCURRENCY = 3;
+        let nextIdx = 0;
+        async function installWorker() {
+            while (nextIdx < toInstall.length) {
+                const item = toInstall[nextIdx++];
+                setStatus(`Installing ${item.name}… (${done + 1}/${total})`, '');
+                const r = await window.cvrma.installMod(state.installDir, {
+                    downloadLink: item.downloadLink, name: item.name, version: item.version,
+                    isPlugin: item.isPlugin, isBroken: item.isBroken, isRetired: item.isRetired,
+                });
+                if (r.success) installed++;
+                else failed++;
+                done++;
+                setProgress(done / total * 0.95);
+            }
         }
+        await Promise.all(
+            Array.from({ length: Math.min(CONCURRENCY, toInstall.length) }, installWorker)
+        );
 
         // Rescan disk to get ground-truth installed state, then rebuild modList
         setStatus('Verifying…', '');
@@ -664,12 +711,24 @@ window.ModsPage = (() => {
         await savePresets();
 
         setProgress(1);
-        setStatus(`Sync complete — ${installed} installed, ${removed} removed.`, 'ok');
+        if (failed > 0) {
+            setStatus(`Sync finished - ${installed} installed, ${removed} removed, ${failed} failed.`, 'err');
+        } else {
+            setStatus(`Sync complete - ${installed} installed, ${removed} removed.`, 'ok');
+        }
         setTimeout(() => setProgress(0), 2500);
 
         checkDirty();
         refreshCardList();
         updateSyncBtn();
+
+        if (gameRunning && installed > 0) {
+            await window.App.choice({
+                title: 'Restart ChilloutVR',
+                body: `Installed ${installed} mod${installed !== 1 ? 's' : ''} while ChilloutVR is running. Restart the game to load them.`,
+                buttons: [{ label: 'OK', value: true, style: 'btn-primary' }],
+            });
+        }
     }
 
     // ── Sync button label ──────────────────────────────────────────────────────
@@ -677,7 +736,7 @@ window.ModsPage = (() => {
         const btn = document.getElementById('btn-install');
         if (!btn) return;
 
-        const toInstall   = state.modList.filter(m => !m.isUnmanaged && m.isSelected && !m.isBroken && !m.isRetired && !m.installedFile).length;
+        const toInstall   = state.modList.filter(m => !m.isUnmanaged && m.isSelected && !m.isBroken && !m.isRetired && (!m.installedFile || m.needsUpdate)).length;
         const toUninstall = state.modList.filter(m => !m.isUnmanaged && !m.isSelected && m.installedFile).length;
         const pending     = toInstall + toUninstall;
         btn.disabled      = false;
@@ -865,7 +924,7 @@ window.ModsPage = (() => {
             document.getElementById('mods-list-region').innerHTML = `
                 <div class="empty-state">
                     <p>⚠ Failed to load mod list. Check your internet connection.</p>
-                    <p style="font-size:10px;color:var(--text-3)">${e.message}</p>
+                    <p style="font-size:10px;color:var(--text-3)">${escHtml(e.message)}</p>
                 </div>`;
             return;
         }
@@ -902,10 +961,6 @@ window.ModsPage = (() => {
     }
 
     // ── Util ───────────────────────────────────────────────────────────────────
-    function escHtml(s) {
-        if (!s) return '';
-        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
     function debounce(fn, d) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), d); }; }
 
     // Called by the options page after a wipe so the install button reflects reality

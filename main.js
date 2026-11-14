@@ -4,9 +4,10 @@ const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
-const http = require('http');
 const AdmZip = require('adm-zip');
-const { execFileSync } = require('child_process');
+const { execFile } = require('child_process');
+const { promisify } = require('util');
+const execFileAsync = promisify(execFile);
 const { parseMelonInfo } = require('./dll-parser');
 
 // ─── Settings ────────────────────────────────────────────────────────────────
@@ -34,6 +35,19 @@ function saveSettings(data) {
 }
 
 // ─── Steam / Oculus directory detection ──────────────────────────────────────
+function getSteamLibraryPaths(steamPath, isWindows = false) {
+    const libraryPaths = [path.join(steamPath, 'steamapps')];
+    const vdf = path.join(steamPath, 'steamapps', 'libraryfolders.vdf');
+    if (!fs.existsSync(vdf)) return libraryPaths;
+
+    const content = fs.readFileSync(vdf, 'utf-8');
+    for (const [, rawPath] of content.matchAll(/"path"\s+"([^"]+)"/g)) {
+        const libRoot = isWindows ? rawPath.replace(/\\\\/g, '\\') : rawPath;
+        libraryPaths.push(path.join(libRoot, 'steamapps'));
+    }
+    return libraryPaths;
+}
+
 function findSteamInstallDir() {
     try {
         // Only available on Windows
@@ -46,22 +60,13 @@ function findSteamInstallDir() {
             });
             key.get('InstallPath', (err, item) => {
                 if (err || !item) { resolve(null); return; }
-                const steamPath = item.value;
-                const vdf = path.join(steamPath, 'steamapps', 'libraryfolders.vdf');
-                if (!fs.existsSync(vdf)) { resolve(null); return; }
-
-                const content = fs.readFileSync(vdf, 'utf-8');
-                const pathMatches = [...content.matchAll(/"path"\s+"([^"]+)"/g)];
-                const libraryPaths = [
-                    path.join(steamPath, 'steamapps'),
-                    ...pathMatches.map(m => path.join(m[1].replace(/\\\\/g, '\\'), 'steamapps'))
-                ];
+                const libraryPaths = getSteamLibraryPaths(item.value, true);
 
                 for (const lib of libraryPaths) {
                     const acf = path.join(lib, 'appmanifest_661130.acf');
                     if (!fs.existsSync(acf)) continue;
                     const acfContent = fs.readFileSync(acf, 'utf-8');
-                    const match = acfContent.match(/\s"installdir"\s+"(.+)"/);
+                    const match = acfContent.match(/\s"installdir"\s+"([^"]+)"/);
                     if (match) {
                         const gameDir = path.join(lib, 'common', match[1]);
                         if (fs.existsSync(path.join(gameDir, 'ChilloutVR.exe'))) {
@@ -112,21 +117,13 @@ function findSteamLinuxInstallDir() {
     ];
 
     for (const steamPath of steamRoots) {
-        const vdf = path.join(steamPath, 'steamapps', 'libraryfolders.vdf');
-        if (!fs.existsSync(vdf)) continue;
-
-        const content = fs.readFileSync(vdf, 'utf-8');
-        const pathMatches = [...content.matchAll(/"path"\s+"([^"]+)"/g)];
-        const libraryPaths = [
-            path.join(steamPath, 'steamapps'),
-            ...pathMatches.map(m => path.join(m[1], 'steamapps'))
-        ];
+        const libraryPaths = getSteamLibraryPaths(steamPath, false);
 
         for (const lib of libraryPaths) {
             const acf = path.join(lib, 'appmanifest_661130.acf');
             if (!fs.existsSync(acf)) continue;
             const acfContent = fs.readFileSync(acf, 'utf-8');
-            const match = acfContent.match(/\s"installdir"\s+"(.+)"/);
+            const match = acfContent.match(/\s"installdir"\s+"([^"]+)"/);
             if (match) {
                 const gameDir = path.join(lib, 'common', match[1]);
                 if (fs.existsSync(path.join(gameDir, 'ChilloutVR.exe'))) {
@@ -159,18 +156,19 @@ async function detectInstallDir() {
 const normFn = s => s.toLowerCase().replace(/[\s\-_.]/g, '');
 
 // ─── Mod file scanning (filename-based only) ─────────────────────────────────
+const MOD_SUBDIRS = [
+    { subdir: 'Mods', isBroken: false, isRetired: false },
+    { subdir: 'Plugins', isBroken: false, isRetired: false },
+    { subdir: 'Mods/Broken', isBroken: true, isRetired: false },
+    { subdir: 'Plugins/Broken', isBroken: true, isRetired: false },
+    { subdir: 'Mods/Retired', isBroken: false, isRetired: true },
+    { subdir: 'Plugins/Retired', isBroken: false, isRetired: true },
+];
+
 function scanInstalledMods(installDir) {
     const results = [];
-    const dirsToScan = [
-        { subdir: 'Mods', isBroken: false, isRetired: false },
-        { subdir: 'Plugins', isBroken: false, isRetired: false },
-        { subdir: 'Mods/Broken', isBroken: true, isRetired: false },
-        { subdir: 'Plugins/Broken', isBroken: true, isRetired: false },
-        { subdir: 'Mods/Retired', isBroken: false, isRetired: true },
-        { subdir: 'Plugins/Retired', isBroken: false, isRetired: true },
-    ];
 
-    for (const { subdir, isBroken, isRetired } of dirsToScan) {
+    for (const { subdir, isBroken, isRetired } of MOD_SUBDIRS) {
         const fullPath = path.join(installDir, subdir);
         if (!fs.existsSync(fullPath)) continue;
         try {
@@ -223,11 +221,24 @@ function removeMelonLoader(installDir) {
 function downloadToBuffer(url, redirectCount = 0) {
     return new Promise((resolve, reject) => {
         if (redirectCount > 10) { reject(new Error('Too many redirects')); return; }
-        const proto = url.startsWith('https') ? https : http;
-        const req = proto.get(url, { headers: { 'User-Agent': 'CVRMelonAssistant/1.0' } }, (res) => {
+        let parsed;
+        try {
+            parsed = new URL(url);
+        } catch {
+            reject(new Error('Invalid download URL'));
+            return;
+        }
+        if (parsed.protocol !== 'https:') {
+            reject(new Error(`Unsupported protocol: ${parsed.protocol}`));
+            return;
+        }
+        const req = https.get(parsed, { headers: { 'User-Agent': 'CVRMelonAssistant/1.0' } }, (res) => {
             // Handle redirects — track final URL so callers can extract a clean filename
             if (res.statusCode === 301 || res.statusCode === 302 || res.statusCode === 307 || res.statusCode === 308) {
-                downloadToBuffer(res.headers.location, redirectCount + 1).then(resolve).catch(reject);
+                const location = res.headers.location;
+                if (!location) { reject(new Error(`Redirect ${res.statusCode} missing Location`)); return; }
+                const nextUrl = new URL(location, parsed).toString();
+                downloadToBuffer(nextUrl, redirectCount + 1).then(resolve).catch(reject);
                 return;
             }
             if (res.statusCode !== 200) {
@@ -255,10 +266,11 @@ async function installMelonLoader(installDir, win) {
     const zip = new AdmZip(zipBuffer);
     const entries = zip.getEntries();
     const resolvedBase = path.resolve(installDir);
+    const basePrefix = resolvedBase.endsWith(path.sep) ? resolvedBase : resolvedBase + path.sep;
     for (const entry of entries) {
         if (entry.entryName.includes('..')) continue; // guard against zip path traversal
         const targetPath = path.join(installDir, entry.entryName);
-        if (!path.resolve(targetPath).startsWith(resolvedBase)) continue;
+        if (!path.resolve(targetPath).startsWith(basePrefix)) continue;
         if (entry.isDirectory) {
             fs.mkdirSync(targetPath, { recursive: true });
         } else {
@@ -278,7 +290,12 @@ async function installMod(installDir, mod, win) {
     const { downloadLink, name, isPlugin, isBroken, isRetired } = mod;
     if (!downloadLink) throw new Error(`No download link for ${name}`);
 
-    win.webContents.send('status-update', { text: `Installing ${name}...`, progress: 0.3 });
+    const safeName = path.basename(String(name || '')).replace(/[<>:"/\\|?*\x00-\x1f]/g, '').trim();
+    if (!safeName || safeName === '.' || safeName === '..') {
+        throw new Error(`Invalid mod name: ${name}`);
+    }
+
+    win.webContents.send('status-update', { text: `Installing ${safeName}...`, progress: 0.3 });
 
     const { buffer } = await downloadToBuffer(downloadLink);
 
@@ -290,9 +307,14 @@ async function installMod(installDir, mod, win) {
     // Always use the canonical mod name so filename-based matching works reliably.
     // Also remove any existing DLL whose normalized basename ends with the normalized
     // mod name (e.g. "red.sim.LightVolumesUdon.dll" when installing "LightVolumesUdon").
-    const fileName = `${name}.dll`;
-    const targetPath = path.join(targetDir, fileName);
-    const nameNorm = normFn(name);
+    const fileName = `${safeName}.dll`;
+    const resolvedTargetDir = path.resolve(targetDir);
+    const targetDirPrefix = resolvedTargetDir.endsWith(path.sep) ? resolvedTargetDir : resolvedTargetDir + path.sep;
+    const targetPath = path.resolve(targetDir, fileName);
+    if (!targetPath.startsWith(targetDirPrefix)) {
+        throw new Error(`Invalid target path for ${safeName}`);
+    }
+    const nameNorm = normFn(safeName);
     try {
         for (const f of fs.readdirSync(targetDir).filter(f => f.endsWith('.dll'))) {
             if (f === fileName) continue;
@@ -302,28 +324,37 @@ async function installMod(installDir, mod, win) {
     } catch (e) { console.error('Failed to clean up old mod files in', targetDir, ':', e); }
 
     fs.writeFileSync(targetPath, buffer);
-    win.webContents.send('status-update', { text: `Installed ${name}.`, progress: 1.0 });
+    win.webContents.send('status-update', { text: `Installed ${safeName}.`, progress: 1.0 });
     return targetPath;
 }
 
-function uninstallMod(filePath) {
-    if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+function uninstallMod(filePath, installDir) {
+    if (!filePath || typeof filePath !== 'string') return false;
+    const resolvedFile = path.resolve(filePath);
+    if (!resolvedFile.toLowerCase().endsWith('.dll')) {
+        throw new Error('Refusing to delete non-DLL file.');
+    }
+    if (installDir) {
+        const allowedRoots = [path.resolve(installDir, 'Mods'), path.resolve(installDir, 'Plugins')];
+        const isContained = allowedRoots.some(root => {
+            const prefix = root.endsWith(path.sep) ? root : root + path.sep;
+            return resolvedFile.startsWith(prefix);
+        });
+        if (!isContained) {
+            throw new Error('Refusing to delete file outside Mods/Plugins directory.');
+        }
+    }
+    if (fs.existsSync(resolvedFile)) {
+        fs.unlinkSync(resolvedFile);
         return true;
     }
     return false;
 }
 
 function removeAllMods(installDir) {
-    // Mirror the subdirectories scanned by scanInstalledMods so nothing is left behind
-    const dirs = [
-        'Mods', 'Plugins',
-        'Mods/Broken', 'Plugins/Broken',
-        'Mods/Retired', 'Plugins/Retired',
-    ];
     const removed = [];
-    for (const d of dirs) {
-        const full = path.join(installDir, d);
+    for (const { subdir } of MOD_SUBDIRS) {
+        const full = path.join(installDir, subdir);
         if (!fs.existsSync(full)) continue;
         const files = fs.readdirSync(full, { withFileTypes: true });
         for (const f of files) {
@@ -487,7 +518,12 @@ ipcMain.handle('select-dir', async () => {
     return { dir, store: storeType };
 });
 
-ipcMain.handle('open-dir', (_e, dirPath) => shell.openPath(dirPath));
+ipcMain.handle('open-dir', (_e, dirPath) => {
+    if (!dirPath || typeof dirPath !== 'string') return;
+    const resolved = path.resolve(dirPath);
+    if (!fs.existsSync(resolved)) return;
+    return shell.openPath(resolved);
+});
 
 ipcMain.handle('open-external', (_e, url) => {
     try {
@@ -535,17 +571,18 @@ ipcMain.handle('scan-installed-mods', (_e, installDir) => {
     return scanInstalledMods(installDir);
 });
 
-ipcMain.handle('melon-loader-status', (_e, installDir) => {
+ipcMain.handle('melon-loader-status', async (_e, installDir) => {
     const installed = isMelonLoaderInstalled(installDir);
     let version = null;
     if (installed && process.platform !== 'linux') {
         try {
             const vDll = path.join(installDir, 'version.dll');
             const escapedPath = vDll.replace(/'/g, "''"); // escape single quotes for PowerShell
-            const raw = execFileSync('powershell', [
+            const { stdout } = await execFileAsync('powershell', [
                 '-NoProfile', '-NonInteractive', '-Command',
                 `(Get-Item '${escapedPath}').VersionInfo.ProductVersion`
-            ], { encoding: 'utf8', timeout: 5000 }).trim();
+            ], { encoding: 'utf8', timeout: 5000 });
+            const raw = stdout.trim();
             version = raw ? raw.split('+')[0] : null;
         } catch { /* leave version null */ }
     }
@@ -579,9 +616,9 @@ ipcMain.handle('install-mod', async (_e, installDir, mod) => {
     }
 });
 
-ipcMain.handle('uninstall-mod', (_e, filePath) => {
+ipcMain.handle('uninstall-mod', (_e, filePath, installDir) => {
     try {
-        uninstallMod(filePath);
+        uninstallMod(filePath, installDir);
         return { success: true };
     } catch (e) {
         return { success: false, error: e.message };
@@ -606,9 +643,23 @@ ipcMain.handle('remove-all-mods-and-melon', (_e, installDir) => {
     }
 });
 
+async function isGameRunning() {
+    try {
+        if (process.platform === 'linux') {
+            const { stdout } = await execFileAsync('pgrep', ['-f', 'ChilloutVR.exe'], { timeout: 3000 });
+            return stdout.trim().length > 0;
+        }
+        const { stdout } = await execFileAsync('tasklist', ['/FI', 'IMAGENAME eq ChilloutVR.exe', '/NH'], { encoding: 'utf8', timeout: 3000 });
+        return /chilloutvr\.exe/i.test(stdout);
+    } catch {
+        return false;
+    }
+}
+
+ipcMain.handle('is-game-running', () => isGameRunning());
+
 ipcMain.handle('get-app-version', () => app.getVersion());
 
-ipcMain.handle('is-portable', () => !!process.env.PORTABLE_EXECUTABLE_FILE);
 ipcMain.handle('get-update-mode', () => getUpdateMode());
 
 ipcMain.handle('export-presets', async () => {
@@ -638,14 +689,17 @@ ipcMain.handle('import-presets', async () => {
     try {
         const raw = fs.readFileSync(filePaths[0], 'utf-8');
         const imported = JSON.parse(raw);
-        if (typeof imported !== 'object' || Array.isArray(imported))
+        if (!imported || typeof imported !== 'object' || Array.isArray(imported))
             return { error: 'Invalid preset file.' };
-        // Validate: each value must be an array of strings
+        // Validate: each value must be an array of strings and key must be safe
+        const sanitized = {};
         for (const [k, v] of Object.entries(imported)) {
+            if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue;
             if (!Array.isArray(v) || v.some(x => typeof x !== 'string'))
                 return { error: `Invalid preset "${k}".` };
+            sanitized[k] = v;
         }
-        return { success: true, presets: imported };
+        return { success: true, presets: sanitized };
     } catch (e) {
         return { error: e.message };
     }

@@ -1,4 +1,5 @@
 window.OptionsPage = (() => {
+    const { escHtml } = window.SharedData;
     async function render(installDir, storeType) {
         const content = document.getElementById('page-content');
         
@@ -141,7 +142,7 @@ window.OptionsPage = (() => {
                         </div>
                         <div class="card-footer">
                             <button class="btn-ghost" id="opt-open-game-dir" ${!installDir ? 'disabled' : ''}>Game Folder</button>
-                            <button class="btn-ghost" id="opt-open-game-appdata" ${!installDir ? 'disabled' : ''}>Game AppData</button>
+                            <button class="btn-ghost" id="opt-open-game-appdata">Game AppData</button>
                             <button class="btn-ghost" id="opt-open-appdata">App Data</button>
                         </div>
                     </div>
@@ -254,6 +255,7 @@ window.OptionsPage = (() => {
         const installMlBtn = document.getElementById('opt-install-ml');
         if (installMlBtn) {
             installMlBtn.addEventListener('click', async () => {
+                if (!await requireGameClosed('installing or updating MelonLoader')) return;
                 installMlBtn.disabled = true;
                 installMlBtn.innerHTML = '<span class="spinner" style="width:13px;height:13px;"></span> Installing…';
                 const result = await window.cvrma.installMelonLoader(installDir);
@@ -271,6 +273,7 @@ window.OptionsPage = (() => {
         const removeMlBtn = document.getElementById('opt-remove-ml');
         if (removeMlBtn) {
             removeMlBtn.addEventListener('click', async () => {
+                if (!await requireGameClosed('uninstalling MelonLoader')) return;
                 if (!await window.App.confirm({ title: 'Uninstall MelonLoader', body: 'This will delete version.dll, dobby.dll and the MelonLoader folder. This cannot be undone.', confirmLabel: 'Uninstall', danger: true })) return;
                 removeMlBtn.disabled = true;
                 const result = await window.cvrma.removeMelonLoader(installDir);
@@ -331,16 +334,17 @@ window.OptionsPage = (() => {
 
             if (mode === true) {
                 // Replace: discard existing, use imported as-is
-                await window.cvrma.saveSettings({ presets: imported });
+                const nextActive = Object.keys(imported)[0] || null;
+                await window.cvrma.saveSettings({ presets: imported, activePresetName: nextActive });
                 const count = Object.keys(imported).length;
-                setStatus(`Replaced presets — ${count} preset${count !== 1 ? 's' : ''} imported.`, 'ok');
+                setStatus(`Replaced presets - ${count} preset${count !== 1 ? 's' : ''} imported.`, 'ok');
                 return;
             }
 
             // Add: merge with conflict resolution
             const settings = await window.cvrma.loadSettings();
             const existing = settings.presets || {};
-            const conflicts = Object.keys(imported).filter(k => k in existing);
+            const conflicts = Object.keys(imported).filter(k => Object.hasOwn(existing, k));
             const final = { ...existing };
             let globalDecision = null; // null=ask, true=overwrite all, false=keep all
 
@@ -364,11 +368,11 @@ window.OptionsPage = (() => {
 
             // Add non-conflicting imports
             for (const [k, v] of Object.entries(imported)) {
-                if (!(k in existing)) final[k] = v;
+                if (!Object.hasOwn(existing, k)) final[k] = v;
             }
 
             await window.cvrma.saveSettings({ presets: final });
-            const added = Object.keys(imported).filter(k => !(k in existing)).length;
+            const added = Object.keys(imported).filter(k => !Object.hasOwn(existing, k)).length;
             const overwritten = conflicts.filter(k => final[k] !== existing[k]).length;
             const parts = [];
             if (added) parts.push(`${added} added`);
@@ -394,6 +398,7 @@ window.OptionsPage = (() => {
         const removeAllBtn = document.getElementById('opt-remove-all-mods');
         if (removeAllBtn) {
             removeAllBtn.addEventListener('click', async () => {
+                if (!await requireGameClosed('removing mods')) return;
                 if (!await window.App.confirm({ title: 'Remove All Mods', body: 'All DLL files in the Mods and Plugins folders will be deleted. This cannot be undone.', confirmLabel: 'Remove Mods', danger: true })) return;
                 removeAllBtn.disabled = true;
                 const result = await window.cvrma.removeAllMods(installDir);
@@ -410,6 +415,7 @@ window.OptionsPage = (() => {
         const removeAllAndMelonBtn = document.getElementById('opt-remove-all-mods-and-melon');
         if (removeAllAndMelonBtn) {
             removeAllAndMelonBtn.addEventListener('click', async () => {
+                if (!await requireGameClosed('removing mods and MelonLoader')) return;
                 if (!await window.App.confirm({ title: 'Remove Mods & MelonLoader', body: 'All mods will be deleted and MelonLoader will be uninstalled. This cannot be undone.', confirmLabel: 'Remove All', danger: true })) return;
                 removeAllAndMelonBtn.disabled = true;
                 const result = await window.cvrma.removeAllModsAndMelon(installDir);
@@ -537,16 +543,22 @@ window.OptionsPage = (() => {
         }
     }
 
+    async function requireGameClosed(actionLabel) {
+        if (!await window.cvrma.isGameRunning()) return true;
+        await window.App.choice({
+            title: 'ChilloutVR is Running',
+            body: `Close ChilloutVR before ${actionLabel}.`,
+            buttons: [{ label: 'OK', value: true, style: 'btn-primary' }],
+        });
+        setStatus(`Close ChilloutVR before ${actionLabel}.`, 'err');
+        return false;
+    }
+
     function setStatus(text, type = '') {
         const el = document.getElementById('status-text');
         if (!el) return;
         el.textContent = text;
         el.className = type ? `status-${type}` : '';
-    }
-
-    function escHtml(str) {
-        if (!str) return '';
-        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
     return { render };

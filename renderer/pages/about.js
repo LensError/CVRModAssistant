@@ -1,4 +1,5 @@
 window.AboutPage = (() => {
+    const { escHtml } = window.SharedData;
     const CREDITS = [
         {
             name: 'Nirv-git',
@@ -109,11 +110,6 @@ window.AboutPage = (() => {
                 window.cvrma.openExternal(el.dataset.ext);
             });
         });
-    }
-
-    function escHtml(str) {
-        if (!str) return '';
-        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
     return { render };

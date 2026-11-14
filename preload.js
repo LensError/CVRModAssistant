@@ -27,7 +27,7 @@ contextBridge.exposeInMainWorld('cvrma', {
 
     // Mods
     installMod: (installDir, mod) => ipcRenderer.invoke('install-mod', installDir, mod),
-    uninstallMod: (filePath) => ipcRenderer.invoke('uninstall-mod', filePath),
+    uninstallMod: (filePath, installDir) => ipcRenderer.invoke('uninstall-mod', filePath, installDir),
     removeAllMods: (installDir) => ipcRenderer.invoke('remove-all-mods', installDir),
     removeAllModsAndMelon: (installDir) => ipcRenderer.invoke('remove-all-mods-and-melon', installDir),
 
@@ -37,8 +37,8 @@ contextBridge.exposeInMainWorld('cvrma', {
 
     // App info
     getAppVersion: () => ipcRenderer.invoke('get-app-version'),
-    isPortable: () => ipcRenderer.invoke('is-portable'),
     getUpdateMode: () => ipcRenderer.invoke('get-update-mode'),
+    isGameRunning: () => ipcRenderer.invoke('is-game-running'),
     platform: process.platform,
 
     // Window controls

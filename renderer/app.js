@@ -4,6 +4,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 window.App = (() => {
+    const { escHtml } = window.SharedData;
     let appState = {
         page: 'mods',
         installDir: null,
@@ -336,11 +337,6 @@ window.App = (() => {
             overlay.querySelector('#cd-overwrite').onclick = () => done(true);
             overlay.addEventListener('keydown', e => { if (e.key === 'Escape') done(false); });
         });
-    }
-
-    function escHtml(s) {
-        if (!s) return '';
-        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
     return {

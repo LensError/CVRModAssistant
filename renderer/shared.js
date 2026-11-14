@@ -1,6 +1,14 @@
 window.SharedData = {
     TERMS_VERSION: 2,
     PROTON_GUIDE_VERSION: 1,
+    escHtml(s) {
+        if (!s) return '';
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    },
     TERMS_HTML: `
         <div class="intro-terms-box" id="intro-terms-scroll">
             <p>
